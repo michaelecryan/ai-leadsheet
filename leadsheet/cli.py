@@ -5,7 +5,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from leadsheet import analysis, midi
+from leadsheet import analysis, export as export_mod, midi
+from leadsheet import simplify as simplify_mod
 
 app = typer.Typer(help="Convert AI-generated MIDI to a guitar lead sheet.")
 console = Console()
@@ -28,12 +29,26 @@ def generate(
 
     result = analysis.analyse(parsed)
 
-    console.print(f"\nDetected Key: [bold green]{result.key}[/bold green]")
-    progression = " | ".join(c.symbol for c in result.chords)
+    capo_hint: str | None = None
+    if simplify:
+        simplified = simplify_mod.simplify(result)
+        key_display = simplified.key
+        chords_display = simplified.chords
+        if simplified.capo and simplified.capo_shape_key:
+            capo_hint = f"capo {simplified.capo} and play in {simplified.capo_shape_key} major shapes"
+    else:
+        key_display = result.key
+        chords_display = result.chords
+
+    console.print(f"\nDetected Key: [bold green]{key_display}[/bold green]")
+    if capo_hint:
+        console.print(f"  [yellow]Tip: {capo_hint}[/yellow]")
+
+    progression = " | ".join(c.symbol for c in chords_display)
     console.print(f"Chord progression: {progression}")
 
-    # simplification and export steps will plug in here
-    console.print("\n[yellow]Export not yet implemented — coming next.[/yellow]")
+    export_mod.export(parsed, key_display, result.melody, chords_display, out)
+    console.print(f"\nExported: [bold]{out}[/bold]")
 
 
 if __name__ == "__main__":
