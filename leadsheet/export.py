@@ -21,6 +21,7 @@ def export(
 ) -> None:
     """Write a MusicXML lead sheet: melody + chord symbols, key sig, time sig."""
     part = music21.stream.Part()
+    part.insert(0, music21.instrument.Guitar())
 
     tonic, mode = key.split(" ", 1)
     part.insert(0, music21.meter.TimeSignature(
@@ -29,11 +30,11 @@ def export(
     part.insert(0, music21.key.Key(tonic, mode))
     part.insert(0, music21.tempo.MetronomeMark(number=round(parsed.bpm)))
 
-    # Melody — each note placed at its beat position with a quantized duration
+    # Melody — snap start positions and durations to grid so gaps are expressible
     for n in melody:
         m21n = music21.note.Note(n.pitch)
         m21n.quarterLength = _quantize(n.duration_beat)
-        part.insert(n.start_beat, m21n)
+        part.insert(_snap(n.start_beat), m21n)
 
     # Chord symbols — one per measure, placed at the downbeat
     for c in chords:
@@ -45,6 +46,11 @@ def export(
             pass  # skip unparseable symbols rather than crash
 
     music21.stream.Score([part]).write("musicxml", fp=str(out))
+
+
+def _snap(beat: float, grid: float = 0.125) -> float:
+    """Round a beat position to the nearest 32nd-note grid."""
+    return round(beat / grid) * grid
 
 
 def _quantize(beats: float) -> float:

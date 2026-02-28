@@ -45,19 +45,47 @@ def _detect_key(parsed: ParsedMidi) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Melody extraction — highest pitch at each 16th-note grid position
+# Melody extraction — highest pitch per 8th-note slot, merged + filtered
 # ---------------------------------------------------------------------------
 
-_GRID = 0.25  # 16th-note resolution
+_GRID = 0.5   # 8th-note resolution
+_MIN_DURATION = 0.5  # drop notes shorter than an 8th note (noise/transients)
 
 
 def _extract_melody(parsed: ParsedMidi) -> list[Note]:
+    # 1. Highest pitch at each 8th-note grid slot
     grid: dict[float, Note] = {}
     for n in parsed.notes:
         slot = round(n.start_beat / _GRID) * _GRID
         if slot not in grid or n.pitch > grid[slot].pitch:
             grid[slot] = n
-    return [grid[s] for s in sorted(grid)]
+
+    slots = sorted(grid)
+
+    # 2. Merge consecutive slots with the same pitch into one longer note
+    merged: list[Note] = []
+    for slot in slots:
+        n = grid[slot]
+        if merged and merged[-1].pitch == n.pitch:
+            prev = merged[-1]
+            merged[-1] = Note(
+                pitch=prev.pitch,
+                start_beat=prev.start_beat,
+                duration_beat=prev.duration_beat + _GRID,
+                velocity=prev.velocity,
+                channel=prev.channel,
+            )
+        else:
+            merged.append(Note(
+                pitch=n.pitch,
+                start_beat=slot,
+                duration_beat=_GRID,
+                velocity=n.velocity,
+                channel=n.channel,
+            ))
+
+    # 3. Drop very short notes (transients / mix bleed)
+    return [n for n in merged if n.duration_beat >= _MIN_DURATION]
 
 
 # ---------------------------------------------------------------------------

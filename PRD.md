@@ -171,6 +171,25 @@ Soft paywall. ~$10–15/month or per-export pricing. Validate willingness to pay
 
 ---
 
+## 13. Next: Gesture-Aware Notation (Planned)
+
+**Problem:** The current analysis pipeline always outputs a single-note melody line. This is wrong for polyphonic instruments — a guitar might be strumming chords, playing a riff, or soloing, and each requires different notation.
+
+**Design direction:** Replace `_extract_melody` with a gesture classifier that looks at note clusters in time and labels each one:
+
+| Gesture | Signal | Notation |
+|---|---|---|
+| Single-note line | 1 note per time window | Notes on staff |
+| Dyad / power chord | 2 simultaneous notes, small interval | Interval or riff notation |
+| Chord strum | 3–6 notes firing within ~1 grid slot | Chord symbol + slash notation |
+| Arpeggio | 3–6 notes from same harmony, sequential | Chord symbol + arpeggio mark |
+
+**Key implementation idea:** Two-pass analysis — (1) cluster notes into time windows and classify gesture type, (2) render each cluster type differently in export. Simultaneity (notes starting within 1 grid slot) is the primary dividing signal.
+
+**Also needed:** `--for guitar|piano` CLI flag to set the target instrument, which changes both notation style and export instrument metadata.
+
+---
+
 ## 12. Out of Scope (Permanent or Long-Term)
 
 - Audio transcription — deferred, not permanent. Target Phase 3–4.

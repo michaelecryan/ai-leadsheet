@@ -5,11 +5,13 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from leadsheet import analysis, audio as audio_mod, export as export_mod, midi
+from leadsheet import analysis, export as export_mod, midi
 from leadsheet import simplify as simplify_mod
 
 app = typer.Typer(help="Convert AI-generated MIDI or audio to a guitar lead sheet.")
 console = Console()
+
+_AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
 
 
 @app.command()
@@ -19,7 +21,8 @@ def generate(
     simplify: bool = typer.Option(True, "--simplify/--no-simplify", help="Apply guitar simplification rules"),
 ) -> None:
     """Convert a MIDI or audio file to a clean, guitar-playable lead sheet (MusicXML)."""
-    if input_path.suffix.lower() in audio_mod.SUPPORTED_EXTENSIONS:
+    if input_path.suffix.lower() in _AUDIO_EXTENSIONS:
+        from leadsheet import audio as audio_mod
         console.print(f"Transcribing audio: [bold]{input_path}[/bold]")
         parsed = audio_mod.load_audio(input_path)
     else:
