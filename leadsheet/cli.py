@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from leadsheet import midi
+from leadsheet import analysis, midi
 
 app = typer.Typer(help="Convert AI-generated MIDI to a guitar lead sheet.")
 console = Console()
@@ -26,8 +26,14 @@ def generate(
     console.print(f"  Time signature: {parsed.time_sig_numerator}/{parsed.time_sig_denominator}")
     console.print(f"  Notes found:    {len(parsed.notes)}")
 
-    # analysis, simplification, and export steps will plug in here
-    console.print("\n[yellow]Pipeline not yet implemented — coming next.[/yellow]")
+    result = analysis.analyse(parsed)
+
+    console.print(f"\nDetected Key: [bold green]{result.key}[/bold green]")
+    progression = " | ".join(c.symbol for c in result.chords)
+    console.print(f"Chord progression: {progression}")
+
+    # simplification and export steps will plug in here
+    console.print("\n[yellow]Export not yet implemented — coming next.[/yellow]")
 
 
 if __name__ == "__main__":

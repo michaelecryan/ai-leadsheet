@@ -35,45 +35,33 @@ class ParsedMidi:
 def load(path: str | Path) -> ParsedMidi:
     """Parse a MIDI file and return a ParsedMidi with all notes in beat units."""
     mid = mido.MidiFile(str(path))
+    tpb = mid.ticks_per_beat
 
     # Defaults (MIDI spec)
     tempo = 500_000
     time_sig_num = 4
     time_sig_den = 4
+    notes: list[Note] = []
 
-    # Scan all tracks for meta messages (tempo / time sig can live anywhere)
+    # Single pass over all tracks: collect meta messages and notes together
     for track in mid.tracks:
-        for msg in track:
-            if msg.type == "set_tempo":
-                tempo = msg.tempo
-            elif msg.type == "time_signature":
-                time_sig_num = msg.numerator
-                time_sig_den = msg.denominator
-
-    parsed = ParsedMidi(
-        ticks_per_beat=mid.ticks_per_beat,
-        tempo=tempo,
-        time_sig_numerator=time_sig_num,
-        time_sig_denominator=time_sig_den,
-    )
-
-    tpb = mid.ticks_per_beat
-
-    for track in mid.tracks:
-        # active[pitch] = (start_tick, velocity, channel)
-        active: dict[int, tuple[int, int, int]] = {}
+        active: dict[int, tuple[int, int, int]] = {}  # pitch -> (start_tick, velocity, channel)
         tick = 0
 
         for msg in track:
             tick += msg.time
 
-            if msg.type == "note_on" and msg.velocity > 0:
+            if msg.type == "set_tempo":
+                tempo = msg.tempo
+            elif msg.type == "time_signature":
+                time_sig_num = msg.numerator
+                time_sig_den = msg.denominator
+            elif msg.type == "note_on" and msg.velocity > 0:
                 active[msg.note] = (tick, msg.velocity, msg.channel)
-
             elif msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
                 if msg.note in active:
                     start_tick, velocity, channel = active.pop(msg.note)
-                    parsed.notes.append(Note(
+                    notes.append(Note(
                         pitch=msg.note,
                         start_beat=start_tick / tpb,
                         duration_beat=(tick - start_tick) / tpb,
@@ -81,5 +69,11 @@ def load(path: str | Path) -> ParsedMidi:
                         channel=channel,
                     ))
 
-    parsed.notes.sort(key=lambda n: n.start_beat)
-    return parsed
+    notes.sort(key=lambda n: n.start_beat)
+    return ParsedMidi(
+        ticks_per_beat=tpb,
+        tempo=tempo,
+        time_sig_numerator=time_sig_num,
+        time_sig_denominator=time_sig_den,
+        notes=notes,
+    )
