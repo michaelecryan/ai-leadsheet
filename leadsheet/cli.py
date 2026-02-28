@@ -5,23 +5,26 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from leadsheet import analysis, export as export_mod, midi
+from leadsheet import analysis, audio as audio_mod, export as export_mod, midi
 from leadsheet import simplify as simplify_mod
 
-app = typer.Typer(help="Convert AI-generated MIDI to a guitar lead sheet.")
+app = typer.Typer(help="Convert AI-generated MIDI or audio to a guitar lead sheet.")
 console = Console()
 
 
 @app.command()
 def generate(
-    midi_path: Path = typer.Argument(..., exists=True, help="Path to input MIDI file"),
+    input_path: Path = typer.Argument(..., exists=True, help="MIDI or audio file (.mid, .mp3, .wav, .flac, .ogg, .m4a)"),
     out: Path = typer.Option(..., help="Output MusicXML file path"),
     simplify: bool = typer.Option(True, "--simplify/--no-simplify", help="Apply guitar simplification rules"),
 ) -> None:
-    """Convert MIDI to a clean, guitar-playable lead sheet (MusicXML)."""
-    console.print(f"Loading MIDI: [bold]{midi_path}[/bold]")
-
-    parsed = midi.load(midi_path)
+    """Convert a MIDI or audio file to a clean, guitar-playable lead sheet (MusicXML)."""
+    if input_path.suffix.lower() in audio_mod.SUPPORTED_EXTENSIONS:
+        console.print(f"Transcribing audio: [bold]{input_path}[/bold]")
+        parsed = audio_mod.load_audio(input_path)
+    else:
+        console.print(f"Loading MIDI: [bold]{input_path}[/bold]")
+        parsed = midi.load(input_path)
 
     console.print(f"  Tempo:          {parsed.bpm:.1f} BPM")
     console.print(f"  Time signature: {parsed.time_sig_numerator}/{parsed.time_sig_denominator}")
