@@ -30,6 +30,7 @@ def export(
     """Write a MusicXML lead sheet: gesture notation + chord symbols, key sig, time sig."""
     part = music21.stream.Part()
     part.insert(0, music21.instrument.Guitar())
+    part.insert(0, music21.clef.TrebleClef())
 
     tonic, mode = key.split(" ", 1)
     part.insert(0, music21.meter.TimeSignature(

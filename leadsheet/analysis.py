@@ -75,6 +75,11 @@ def _detect_key(parsed: ParsedMidi) -> str:
 _GRID = 0.5       # 8th-note resolution
 _MIN_DURATION = 0.5  # drop gestures shorter than an 8th note (noise/transients)
 
+# Guitar practical pitch range — notes outside this are overtones or sub-bass noise.
+# E2 (MIDI 40) = open low E string; B4 (MIDI 71) = 7th fret high e string (readable in treble clef).
+_MIN_PITCH = 40   # E2
+_MAX_PITCH = 76   # E5 — upper limit before overtone territory for acoustic guitar
+
 
 def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
     """Classify note events into melody, dyad, or strum gestures.
@@ -82,9 +87,11 @@ def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
     Groups note attacks by 8th-note grid slot, classifies by simultaneous pitch count,
     then merges consecutive slots with identical kind and pitches.
     """
-    # 1. Group notes by attack slot (snapped to 8th-note grid)
+    # 1. Group notes by attack slot (snapped to 8th-note grid), filtered to guitar range
     attacks: dict[float, list[Note]] = defaultdict(list)
     for n in parsed.notes:
+        if not (_MIN_PITCH <= n.pitch <= _MAX_PITCH):
+            continue
         slot = round(n.start_beat / _GRID) * _GRID
         attacks[slot].append(n)
 
