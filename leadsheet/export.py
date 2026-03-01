@@ -66,7 +66,7 @@ def _build_element(g: Gesture) -> music21.base.Music21Object:
         c = music21.chord.Chord(g.pitches)
         c.quarterLength = ql
         return c
-    # strum — slash notehead
+    # strum and arpeggio both render as slash noteheads; chord symbol is placed by the chord list
     n = music21.note.Note(_SLASH_PITCH)
     n.notehead = "slash"
     n.quarterLength = ql

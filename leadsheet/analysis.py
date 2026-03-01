@@ -16,6 +16,7 @@ class GestureKind(str, Enum):
     MELODY = "melody"
     DYAD = "dyad"
     STRUM = "strum"
+    ARPEGGIO = "arpeggio"
 
 
 @dataclass
@@ -80,6 +81,72 @@ _MIN_DURATION = 0.5  # drop gestures shorter than an 8th note (noise/transients)
 _MIN_PITCH = 40   # E2
 _MAX_PITCH = 76   # E5 — upper limit before overtone territory for acoustic guitar
 
+# Arpeggio detection thresholds
+_ARP_MAX_GAP_BEATS = 1.0    # max start-to-start gap between consecutive picks (≤ quarter note)
+_ARP_WINDOW_BEATS = 4.0     # max total span of a run (one 4/4 measure)
+_ARP_MIN_PITCH_CLASSES = 3  # min distinct pitch classes to form a chord (2 = harmonically ambiguous)
+
+
+def _detect_arpeggios(gestures: list[Gesture]) -> list[Gesture]:
+    """Collapse runs of consecutive MELODY gestures that form a recognizable chord.
+
+    Scans for contiguous MELODY runs where consecutive attacks are within
+    _ARP_MAX_GAP_BEATS and the total span is within _ARP_WINDOW_BEATS. If the
+    combined pitch classes number at least _ARP_MIN_PITCH_CLASSES and produce a
+    clean chord symbol, the run collapses into a single ARPEGGIO gesture.
+    """
+    result: list[Gesture] = []
+    window: list[Gesture] = []
+
+    def flush_window() -> None:
+        if len(window) < 2:
+            result.extend(window)
+            window.clear()
+            return
+
+        all_pitches = [p for g in window for p in g.pitches]
+        pitch_classes = tuple(sorted(set(p % 12 for p in all_pitches)))
+
+        if len(pitch_classes) < _ARP_MIN_PITCH_CLASSES:
+            result.extend(window)
+            window.clear()
+            return
+
+        # Pass pitch classes (not full MIDI pitches) to maximise lru_cache hits
+        # across different octave voicings of the same chord.
+        symbol = _chord_symbol(pitch_classes)
+        if symbol == "?" or "(" in symbol:
+            result.extend(window)
+            window.clear()
+            return
+
+        first, last = window[0], window[-1]
+        result.append(Gesture(
+            kind=GestureKind.ARPEGGIO,
+            start_beat=first.start_beat,
+            duration_beat=(last.start_beat + last.duration_beat) - first.start_beat,
+            pitches=sorted(set(all_pitches)),
+            symbol=symbol,
+        ))
+        window.clear()
+
+    for g in gestures:
+        if g.kind != GestureKind.MELODY:
+            flush_window()
+            result.append(g)
+            continue
+
+        if window:
+            gap = g.start_beat - window[-1].start_beat   # start-to-start, handles sustain
+            span = g.start_beat - window[0].start_beat
+            if gap > _ARP_MAX_GAP_BEATS or span > _ARP_WINDOW_BEATS:
+                flush_window()
+
+        window.append(g)
+
+    flush_window()
+    return result
+
 
 def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
     """Classify note events into melody, dyad, or strum gestures.
@@ -120,7 +187,7 @@ def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
         elif g.duration_beat >= _MIN_DURATION:
             merged.append(g)
 
-    return merged
+    return _detect_arpeggios(merged)
 
 
 # ---------------------------------------------------------------------------
