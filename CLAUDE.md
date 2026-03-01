@@ -100,7 +100,8 @@ Do not expand scope beyond what is stated for the session.
 | Full piano voicings | ❌ | Never add |
 | Bass line | ❌ | Never add |
 | Drum parts | ❌ | Never add |
-| Tabs | ❌ | Out of scope for V1 |
+| Chord diagrams | ✅ Phase 2 | Rendered from chord symbols (e.g. "Am") — not from audio |
+| Melody tabs | 🔄 Phase 3+ | Requires fretboard mapper; defer until web UI exists |
 
 ---
 
@@ -187,10 +188,19 @@ V1 is complete when ALL of these are true:
 
 | Phase | Focus | Status |
 |---|---|---|
-| 1 | CLI engine. MIDI in, MusicXML out. Simplification. | 🔄 Active |
-| 2 | PDF export. Formatting polish. Capo suggestions. | Not started |
-| 3 | Web UI. MIDI upload. Free tier. Audio input via Basic Pitch. | Not started |
-| 4 | Soft paywall. ~$10–15/month or per-export pricing. | Not started |
+| 1 | CLI engine. MIDI in, MusicXML out. Simplification. Arpeggio detection. | 🔄 Active |
+| 2 | Chord diagrams. Lead sheet PDF delivery. Formatting polish. | Not started |
+| 3 | Web UI (FastAPI + Railway). Audio upload. alphaTab rendering client-side. | Not started |
+| 4 | Melody tabs (fretboard mapper). Soft paywall. ~$10–15/month. | Not started |
+
+## Phase 2/3 Rendering Stack (Decided, Not Yet Built)
+
+**Goal:** Deliver a printable lead sheet to the user — not a MusicXML file they have to open elsewhere.
+
+- **Chord diagrams** — rendered from chord symbol strings (e.g. "Am", "G7") using a JS library (ChordJS or similar). Tractable from what we already produce. Priority item for Phase 2.
+- **Standard notation** — rendered client-side from MusicXML using **alphaTab** (guitar-native JS renderer). alphaTab is preferred over Verovio because it understands guitar-specific notation natively.
+- **Melody tabs** — deferred. Requires a fretboard mapper (pitch → string + fret), which is a non-trivial problem. Add post-V1 once there's user demand signal.
+- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; alphaTab renders everything in the browser. Server stays pure Python, no notation rendering server-side.
 
 ---
 
