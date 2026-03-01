@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Literal
 
 import music21
 
@@ -15,16 +16,25 @@ class MeasureChord:
 
 
 @dataclass
+class Gesture:
+    kind: Literal["melody", "dyad", "strum"]
+    start_beat: float
+    duration_beat: float
+    pitches: list[int]      # sorted low→high; 1 pitch for melody
+    symbol: str | None      # chord symbol for strum; None for melody/dyad
+
+
+@dataclass
 class Analysis:
-    key: str                    # e.g. "E major"
-    melody: list[Note]          # top-voice note line
-    chords: list[MeasureChord]  # one chord symbol per measure
+    key: str                      # e.g. "E major"
+    gestures: list[Gesture]       # classified note events
+    chords: list[MeasureChord]    # one chord symbol per measure
 
 
 def analyse(parsed: ParsedMidi) -> Analysis:
     return Analysis(
         key=_detect_key(parsed),
-        melody=_extract_melody(parsed),
+        gestures=_classify_gestures(parsed),
         chords=_chords_by_measure(parsed),
     )
 
@@ -45,47 +55,53 @@ def _detect_key(parsed: ParsedMidi) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Melody extraction — highest pitch per 8th-note slot, merged + filtered
+# Gesture classification — what is the instrument doing at each moment?
 # ---------------------------------------------------------------------------
 
-_GRID = 0.5   # 8th-note resolution
-_MIN_DURATION = 0.5  # drop notes shorter than an 8th note (noise/transients)
+_GRID = 0.5       # 8th-note resolution
+_MIN_DURATION = 0.5  # drop gestures shorter than an 8th note (noise/transients)
 
 
-def _extract_melody(parsed: ParsedMidi) -> list[Note]:
-    # 1. Highest pitch at each 8th-note grid slot
-    grid: dict[float, Note] = {}
+def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
+    # 1. Group notes by attack slot (snapped to 8th-note grid)
+    attacks: dict[float, list[Note]] = defaultdict(list)
     for n in parsed.notes:
         slot = round(n.start_beat / _GRID) * _GRID
-        if slot not in grid or n.pitch > grid[slot].pitch:
-            grid[slot] = n
+        attacks[slot].append(n)
 
-    slots = sorted(grid)
+    # 2. Classify each slot
+    raw: list[Gesture] = []
+    for slot in sorted(attacks):
+        notes = attacks[slot]
+        pitches = sorted(set(n.pitch for n in notes))
+        duration = max(n.duration_beat for n in notes)
 
-    # 2. Merge consecutive slots with the same pitch into one longer note
-    merged: list[Note] = []
-    for slot in slots:
-        n = grid[slot]
-        if merged and merged[-1].pitch == n.pitch:
-            prev = merged[-1]
-            merged[-1] = Note(
-                pitch=prev.pitch,
-                start_beat=prev.start_beat,
-                duration_beat=prev.duration_beat + _GRID,
-                velocity=prev.velocity,
-                channel=prev.channel,
-            )
+        if len(pitches) == 1:
+            kind: Literal["melody", "dyad", "strum"] = "melody"
+            symbol = None
+        elif len(pitches) == 2:
+            kind = "dyad"
+            symbol = None
         else:
-            merged.append(Note(
-                pitch=n.pitch,
-                start_beat=slot,
-                duration_beat=_GRID,
-                velocity=n.velocity,
-                channel=n.channel,
-            ))
+            kind = "strum"
+            symbol = _chord_symbol(music21.chord.Chord(pitches))
 
-    # 3. Drop very short notes (transients / mix bleed)
-    return [n for n in merged if n.duration_beat >= _MIN_DURATION]
+        raw.append(Gesture(kind=kind, start_beat=slot, duration_beat=duration,
+                           pitches=pitches, symbol=symbol))
+
+    # 3. Merge consecutive gestures with same kind + pitches
+    merged: list[Gesture] = []
+    for g in raw:
+        if merged and merged[-1].kind == g.kind and merged[-1].pitches == g.pitches:
+            prev = merged[-1]
+            merged[-1] = Gesture(kind=prev.kind, start_beat=prev.start_beat,
+                                 duration_beat=prev.duration_beat + _GRID,
+                                 pitches=prev.pitches, symbol=prev.symbol)
+        else:
+            merged.append(g)
+
+    # 4. Drop very short gestures (transients / mix bleed)
+    return [g for g in merged if g.duration_beat >= _MIN_DURATION]
 
 
 # ---------------------------------------------------------------------------

@@ -53,7 +53,7 @@ def generate(
     progression = " | ".join(c.symbol for c in chords_display)
     console.print(f"Chord progression: {progression}")
 
-    export_mod.export(parsed, key_display, result.melody, chords_display, out)
+    export_mod.export(parsed, key_display, result.gestures, chords_display, out)
     console.print(f"\nExported: [bold]{out}[/bold]")
 
 

@@ -26,3 +26,11 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Audio input and generated output files
+*.mp3
+*.wav
+*.flac
+*.ogg
+*.m4a
+*.xml
