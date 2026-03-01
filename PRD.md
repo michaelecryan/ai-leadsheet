@@ -2,23 +2,25 @@
 
 **Version:** 1.0  
 **Status:** Active  
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-03-01
 
 ---
 
 ## 1. Problem
 
-AI music tools like Suno and Udio let anyone generate a song. But the output is a black box — you can export MIDI, but you can't sit down and play it.
+AI music tools like Suno and Udio let anyone generate a song. But the output is a black box — you can't sit down and play it.
 
-The current workaround: MIDI → MuseScore → manual cleanup. It's slow, produces cluttered notation, and outputs something closer to a transcription than something you'd hand to a musician.
+The current workaround: export audio (or MIDI if you're on a paid plan) → MuseScore → manual cleanup. It's slow, produces cluttered notation, and outputs something closer to a transcription than something you'd hand to a musician.
 
-There is no tool that takes AI-generated MIDI and produces a clean, guitarist-readable lead sheet.
+There is no tool that takes AI-generated audio or MIDI and produces a clean, guitarist-readable lead sheet.
+
+**The market reality:** Suno/Udio MIDI export requires a paid plan (Suno Pro ~$10/month). Audio export is available to all free-tier users. Audio is therefore the primary input path — it reaches a significantly larger audience.
 
 ---
 
 ## 2. Solution
 
-**AI Lead Sheet** converts AI-generated MIDI into clean, human-playable lead sheets — optimized for guitar.
+**AI Lead Sheet** converts AI-generated audio or MIDI into clean, human-playable lead sheets — optimized for guitar.
 
 Not a transcription. Not a notation editor. A lead sheet: melody line + chord symbols, in a readable key, with guitar-playable chords.
 
@@ -31,7 +33,7 @@ Not a transcription. Not a notation editor. A lead sheet: melody line + chord sy
 - Uses Suno or Udio to generate songs
 - Plays guitar (beginner to intermediate)
 - Wants to actually sit down and play what the AI made
-- Frustrated that MIDI exports are unreadable or unplayable
+- Frustrated that AI song output is unreadable or unplayable
 - Not a music theory expert — needs the tool to handle key detection and chord cleanup
 - Values output they can print, read, and play in one session
 
@@ -51,7 +53,7 @@ A valid AI Lead Sheet output is:
 | Melody line | ✅ | Single notes, readable rhythm |
 | Chord symbols | ✅ | Above the staff, per measure |
 | Key signature | ✅ | Guitar-friendly keys preferred |
-| Time signature | ✅ | Detected from MIDI |
+| Time signature | ✅ | Detected from input |
 | Chord simplification | ✅ | Extensions stripped to playable shapes |
 | Full piano voicings | ❌ | Out of scope |
 | Bass line | ❌ | Out of scope |
@@ -80,23 +82,24 @@ This is what a human musician would do when arranging a chart. The tool does it 
 ## 6. V1 Feature Set
 
 ### Must Have
-- [ ] Parse MIDI file (local input)
-- [ ] Detect key signature
-- [ ] Extract melody line
-- [ ] Infer chord symbols grouped by measure
-- [ ] Apply simplification rules (extensions, enharmonics)
-- [ ] Export clean MusicXML (openable in MuseScore / other notation apps)
-- [ ] CLI interface
+- [x] Parse audio file via Basic Pitch transcription (primary input path)
+- [x] Parse MIDI file (secondary input path — cleaner output, smaller audience)
+- [x] Detect key signature
+- [x] Gesture classification — melody, dyad, strum, arpeggio
+- [x] Infer chord symbols grouped by measure
+- [x] Apply simplification rules (extensions, enharmonics)
+- [x] Export clean MusicXML (openable in MuseScore / Flat.io / other notation apps)
+- [x] CLI interface with `--simplify`, `--inspect` flags
 
 ### Should Have
-- [ ] `--simplify` flag (on by default, can disable for raw output)
-- [ ] Print detected key to terminal
-- [ ] Print chord progression summary to terminal
+- [x] Capo suggestions for guitar-unfriendly keys
+- [x] `--inspect` flag for calibration visibility
+- [ ] Validation across 5–10 Suno/Udio audio exports (in progress)
 
 ### Won't Have in V1
-- Audio / MP3 input
-- Web UI
+- Web UI (Phase 3)
 - PDF export (Phase 2)
+- Chord diagrams (Phase 2)
 - Accounts or payment
 - Advanced reharmonization
 - Tab notation
@@ -149,16 +152,16 @@ V1 is successful when:
 ## 10. Phase Roadmap
 
 ### Phase 1 — Engine (Now)
-CLI pipeline. MIDI in, MusicXML out. Simplification baked in.
+CLI pipeline. Audio or MIDI in, MusicXML out. Simplification, gesture classification, arpeggio detection baked in. Validate output quality across Suno/Udio songs before moving on.
 
 ### Phase 2 — Output Quality
-PDF export. Formatting polish. Capo suggestions. Chord diagram option.
+Chord diagrams rendered from chord symbols. Lead sheet PDF/printable delivery (alphaTab client-side rendering). Formatting polish.
 
-### Phase 3 — Product Experiment
-Minimal web UI. Upload MIDI, download lead sheet. Free tier with export limit. Launch to AI music communities (Reddit, Discord). Accept MP3/WAV via Basic Pitch transcription layer feeding existing MIDI pipeline. Unlocks users who can't or won't export MIDI.
+### Phase 3 — Web Product
+Minimal web UI (FastAPI + Railway). Upload MP3/audio, download lead sheet. Free tier with export limit. Hero flow: Suno free-tier user uploads audio → gets playable chart. Launch to AI music communities (Reddit, Discord).
 
-### Phase 4 — Monetization
-Soft paywall. ~$10–15/month or per-export pricing. Validate willingness to pay with real cohort.
+### Phase 4 — Monetization + Tabs
+Soft paywall. ~$10–15/month or per-export pricing. Melody tab generation (fretboard mapper) if user demand signals it. MIDI input as premium path for cleaner output.
 
 ---
 
@@ -167,32 +170,28 @@ Soft paywall. ~$10–15/month or per-export pricing. Validate willingness to pay
 1. Do AI music creators actually want printable charts, or just playback?
 2. Is simplification more valuable than transcription accuracy to this user?
 3. What is the minimum output quality required to feel superior to MuseScore import?
-4. Is MIDI-first sufficient, or does audio input need to come earlier than expected?
+4. ~~Is MIDI-first sufficient, or does audio input need to come earlier than expected?~~ **Answered: audio is primary.** MIDI requires a paid Suno plan; audio reaches all free-tier users. Audio quality on Suno/Udio output (synthesized) is meaningfully better than live instrument recording.
 
 ---
 
-## 13. Next: Gesture-Aware Notation (Planned)
+## 13. Gesture-Aware Notation (Done)
 
-**Problem:** The current analysis pipeline always outputs a single-note melody line. This is wrong for polyphonic instruments — a guitar might be strumming chords, playing a riff, or soloing, and each requires different notation.
+Replaced single-note melody extraction with a full gesture classifier:
 
-**Design direction:** Replace `_extract_melody` with a gesture classifier that looks at note clusters in time and labels each one:
+| Gesture | Signal | Notation | Status |
+|---|---|---|---|
+| Single-note line | 1 note per grid slot | Notes on staff | ✅ Done |
+| Dyad / power chord | 2 simultaneous notes | Interval notation | ✅ Done |
+| Chord strum | 3+ simultaneous notes | Chord symbol + slash notehead | ✅ Done |
+| Arpeggio | 3–6 sequential notes forming a chord | Chord symbol + slash notehead | ✅ Done |
 
-| Gesture | Signal | Notation |
-|---|---|---|
-| Single-note line | 1 note per time window | Notes on staff |
-| Dyad / power chord | 2 simultaneous notes, small interval | Interval or riff notation |
-| Chord strum | 3–6 notes firing within ~1 grid slot | Chord symbol + slash notation |
-| Arpeggio | 3–6 notes from same harmony, sequential | Chord symbol + arpeggio mark |
-
-**Key implementation idea:** Two-pass analysis — (1) cluster notes into time windows and classify gesture type, (2) render each cluster type differently in export. Simultaneity (notes starting within 1 grid slot) is the primary dividing signal.
-
-**Also needed:** `--for guitar|piano` CLI flag to set the target instrument, which changes both notation style and export instrument metadata.
+**Known audio limitation:** Chord-melody style playing (picked melody over ringing chord) causes melody notes to bleed into strum clusters. This is a Basic Pitch limitation for live acoustic recordings; Suno/Udio synthesized audio handles significantly better. Top-note extraction is a possible future improvement for audio quality.
 
 ---
 
 ## 12. Out of Scope (Permanent or Long-Term)
 
-- Audio transcription — deferred, not permanent. Target Phase 3–4.
+- Audio transcription — **built and functional** in V1. Primary input path.
 - Real-time collaboration
 - DAW plugin
 - Full arrangement / multi-instrument scores

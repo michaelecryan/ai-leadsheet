@@ -55,25 +55,26 @@ Output = melody line + chord symbols. NOT a transcription. NOT a notation editor
 
 ---
 
-## Audio-First Testing Strategy
+## Input Strategy — Audio is Primary
 
-Audio input (`audio.py` via Basic Pitch) was added early to enable free testing
-with Suno/Udio audio exports, avoiding the Suno Premier paywall for MIDI export.
+**Audio is the primary V1 input path.** MIDI is supported and produces cleaner output,
+but requires a paid Suno plan (Pro ~$10/month). Audio export is available to all free-tier
+users — a significantly larger audience.
 
-This is NOT a change in product strategy — MIDI remains the primary V1 input.
-Audio input is Phase 3 scope but the code exists and is functional.
+**Hero flow:** Suno/Udio free user exports MP3 → uploads → gets a playable lead sheet.
 
-**Known tradeoff:** Audio transcription introduces noise (guitar overtones, attack
-transients, sympathetic resonance) that MIDI won't have. Expect cleaner output
-once tested with real Suno MIDI exports.
+**Audio quality findings (from testing):**
+- Suno/Udio synthesized audio transcribes well — chord progressions correct, gestures clean
+- Live acoustic guitar recordings are harder: overtones, tuning variance, and chord-melody
+  bleed (picked melody notes absorbed into chord clusters) degrade output quality
+- These issues are specific to live recordings, not the primary use case
 
-**Market implication:** Audio input reaches all Suno/Udio users (free tier).
-MIDI input requires users to be on a paid plan. This significantly expands TAM
-and is worth validating in Phase 3 messaging.
+**MIDI as premium path:** Supports users on paid Suno plans who want cleaner output.
+Worth keeping, but not the lead product story.
 
-**Open question:** Does audio input quality meet the playability bar for our
-persona, or does it require MIDI for acceptable output? Answer this empirically
-before committing to audio as a primary input path.
+**Future audio improvement (not yet built):** Top-note extraction — when a strum cluster
+contains many notes, the highest pitch is often a melody note that was picked rather than
+strummed. Separating it would improve chord-melody style audio. Defer until validated needed.
 
 Do not expand audio.py without explicit instruction.
 
@@ -176,11 +177,11 @@ Exported: chart.xml
 ## V1 Success Criteria (Definition of Done)
 
 V1 is complete when ALL of these are true:
-1. CLI runs end-to-end on a Suno/Udio MIDI export without errors
-2. MusicXML output opens in MuseScore without errors
+1. CLI runs end-to-end on a Suno/Udio audio export without errors
+2. MusicXML output opens in MuseScore/Flat.io without errors
 3. Chord symbols are guitar-playable (no unplayable extensions)
 4. Output is demonstrably cleaner than default MuseScore MIDI import
-5. Validated on 5–10 real AI-generated MIDI files
+5. Validated on 5–10 real Suno/Udio audio exports across different genres
 
 ---
 
