@@ -1,3 +1,5 @@
+"""Analysis — key detection, gesture classification, and chord grouping from a ParsedMidi."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -39,6 +41,7 @@ class Analysis:
 
 
 def analyse(parsed: ParsedMidi) -> Analysis:
+    """Run full analysis on a parsed MIDI file: key, gestures, and per-measure chords."""
     return Analysis(
         key=_detect_key(parsed),
         gestures=_classify_gestures(parsed),
@@ -50,11 +53,15 @@ def analyse(parsed: ParsedMidi) -> Analysis:
 # Key detection
 # ---------------------------------------------------------------------------
 
+_MIN_NOTE_QL = 0.0625  # 16th note — minimum quarter-length fed to music21 (avoids zero-length notes)
+
+
 def _detect_key(parsed: ParsedMidi) -> str:
+    """Detect the musical key using music21's Krumhansl-Schmuckler algorithm."""
     s = music21.stream.Stream()
     for n in parsed.notes:
         m21 = music21.note.Note(n.pitch)
-        m21.quarterLength = max(n.duration_beat, 0.0625)  # avoid zero-length
+        m21.quarterLength = max(n.duration_beat, _MIN_NOTE_QL)
         s.append(m21)  # key detection needs pitch+duration only, not position
 
     k = s.analyze("key")
@@ -70,6 +77,11 @@ _MIN_DURATION = 0.5  # drop gestures shorter than an 8th note (noise/transients)
 
 
 def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
+    """Classify note events into melody, dyad, or strum gestures.
+
+    Groups note attacks by 8th-note grid slot, classifies by simultaneous pitch count,
+    then merges consecutive slots with identical kind and pitches.
+    """
     # 1. Group notes by attack slot (snapped to 8th-note grid)
     attacks: dict[float, list[Note]] = defaultdict(list)
     for n in parsed.notes:
@@ -109,6 +121,7 @@ def _classify_gestures(parsed: ParsedMidi) -> list[Gesture]:
 # ---------------------------------------------------------------------------
 
 def _chords_by_measure(parsed: ParsedMidi) -> list[MeasureChord]:
+    """Group all notes by measure and infer a single chord symbol per measure."""
     bpm = parsed.beats_per_measure
     pitches_by_measure: dict[int, list[int]] = defaultdict(list)
 
@@ -138,6 +151,7 @@ _QUALITY_SUFFIX: dict[str, str] = {
 
 @lru_cache(maxsize=256)
 def _chord_symbol(pitches: tuple[int, ...]) -> str:
+    """Return a chord symbol string for a set of MIDI pitches (cached by pitch tuple)."""
     try:
         chord = music21.chord.Chord(list(pitches))
         root = chord.root().name

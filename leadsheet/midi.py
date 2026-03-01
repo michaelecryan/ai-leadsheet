@@ -1,3 +1,5 @@
+"""MIDI parser — reads a .mid file and returns a ParsedMidi with all notes in beat units."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -25,10 +27,12 @@ class ParsedMidi:
 
     @property
     def bpm(self) -> float:
+        """Tempo in beats per minute, derived from the MIDI tempo (µs/beat)."""
         return 60_000_000 / self.tempo
 
     @property
     def beats_per_measure(self) -> int:
+        """Number of beats in a measure (time signature numerator)."""
         return self.time_sig_numerator
 
 

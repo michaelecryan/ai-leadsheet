@@ -1,3 +1,5 @@
+"""Audio transcription — converts an audio file to ParsedMidi via Basic Pitch."""
+
 from __future__ import annotations
 
 import sys

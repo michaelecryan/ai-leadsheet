@@ -1,3 +1,5 @@
+"""Simplification — strip jazz extensions, normalize enharmonics, and suggest capo positions."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,6 +20,7 @@ class Simplified:
 # ---------------------------------------------------------------------------
 
 def simplify(result: Analysis) -> Simplified:
+    """Apply guitar-friendly simplification: normalize key, strip extensions, suggest capo."""
     key = _normalize_key(result.key)
     chords = [MeasureChord(c.measure, _simplify_chord(c.symbol)) for c in result.chords]
     capo = _suggest_capo(key)
@@ -79,6 +82,7 @@ _EXTENSION_STRIP: list[tuple[str, str]] = [
 
 
 def _simplify_chord(symbol: str) -> str:
+    """Reduce a chord symbol to a guitar-playable form (strip extensions, fix enharmonics)."""
     # Slash chords → root only: "C/E" → "C"
     if "/" in symbol:
         symbol = symbol.split("/")[0]

@@ -1,3 +1,5 @@
+"""MusicXML export — renders gestures and chord symbols into a music21 Score."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,6 +15,9 @@ _STANDARD_DURATIONS = [4.0, 3.0, 2.0, 1.5, 1.0, 0.75, 0.5, 0.375, 0.25, 0.125]
 
 # Neutral pitch for slash noteheads (conventional lead sheet rhythm notation)
 _SLASH_PITCH = "B4"
+
+# A duration snaps up to the next standard value if it is within this fraction of it
+_SNAP_THRESHOLD = 0.75
 
 
 def export(
@@ -44,7 +49,7 @@ def export(
             cs = music21.harmony.ChordSymbol(c.symbol)
             part.insert(offset, cs)
         except Exception:
-            pass  # skip unparseable symbols rather than crash
+            print(f"Warning: skipping unparseable chord symbol '{c.symbol}' at measure {c.measure}")
 
     music21.stream.Score([part]).write("musicxml", fp=str(out))
 
@@ -75,6 +80,6 @@ def _snap(beat: float, grid: float = 0.125) -> float:
 def _quantize(beats: float) -> float:
     """Snap a duration in beats to the nearest standard note value."""
     for dur in _STANDARD_DURATIONS:
-        if beats >= dur * 0.75:  # within 25% → snap up
+        if beats >= dur * _SNAP_THRESHOLD:
             return dur
     return 0.125  # floor: 32nd note

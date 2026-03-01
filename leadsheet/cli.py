@@ -1,3 +1,5 @@
+"""CLI entry point — Typer app that drives the full MIDI/audio → MusicXML pipeline."""
+
 from __future__ import annotations
 
 from pathlib import Path
