@@ -4,7 +4,7 @@ from pathlib import Path
 
 import music21
 
-from leadsheet.analysis import Gesture, MeasureChord
+from leadsheet.analysis import Gesture, GestureKind, MeasureChord
 from leadsheet.midi import ParsedMidi
 
 
@@ -35,24 +35,7 @@ def export(
 
     # Gestures — render each type differently
     for g in gestures:
-        ql = _quantize(g.duration_beat)
-        offset = _snap(g.start_beat)
-
-        if g.kind == "melody":
-            m21n = music21.note.Note(g.pitches[0])
-            m21n.quarterLength = ql
-            part.insert(offset, m21n)
-
-        elif g.kind == "dyad":
-            m21c = music21.chord.Chord(g.pitches)
-            m21c.quarterLength = ql
-            part.insert(offset, m21c)
-
-        elif g.kind == "strum":
-            m21n = music21.note.Note(_SLASH_PITCH)
-            m21n.notehead = "slash"
-            m21n.quarterLength = ql
-            part.insert(offset, m21n)
+        part.insert(_snap(g.start_beat), _build_element(g))
 
     # Chord symbols — one per measure, placed at the downbeat
     for c in chords:
@@ -64,6 +47,24 @@ def export(
             pass  # skip unparseable symbols rather than crash
 
     music21.stream.Score([part]).write("musicxml", fp=str(out))
+
+
+def _build_element(g: Gesture) -> music21.base.Music21Object:
+    """Return the music21 element that represents a gesture."""
+    ql = _quantize(g.duration_beat)
+    if g.kind == GestureKind.MELODY:
+        n = music21.note.Note(g.pitches[0])
+        n.quarterLength = ql
+        return n
+    if g.kind == GestureKind.DYAD:
+        c = music21.chord.Chord(g.pitches)
+        c.quarterLength = ql
+        return c
+    # strum — slash notehead
+    n = music21.note.Note(_SLASH_PITCH)
+    n.notehead = "slash"
+    n.quarterLength = ql
+    return n
 
 
 def _snap(beat: float, grid: float = 0.125) -> float:
