@@ -56,17 +56,18 @@ def export(
 
 
 def _build_element(g: Gesture) -> music21.base.Music21Object:
-    """Return the music21 element that represents a gesture."""
+    """Return the music21 element that represents a gesture.
+
+    Only melody gestures render as actual pitched notes. All other gestures
+    (dyad, strum, arpeggio) render as slash noteheads — matching standard
+    lead sheet convention where non-melodic events show rhythm, not pitch.
+    """
     ql = _quantize(g.duration_beat)
     if g.kind == GestureKind.MELODY:
         n = music21.note.Note(g.pitches[0])
         n.quarterLength = ql
         return n
-    if g.kind == GestureKind.DYAD:
-        c = music21.chord.Chord(g.pitches)
-        c.quarterLength = ql
-        return c
-    # strum and arpeggio both render as slash noteheads; chord symbol is placed by the chord list
+    # dyad, strum, arpeggio — slash notehead; chord symbol placed by the chord list
     n = music21.note.Note(_SLASH_PITCH)
     n.notehead = "slash"
     n.quarterLength = ql
