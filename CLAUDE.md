@@ -7,8 +7,9 @@
 
 ## What This Product Does
 
-Converts AI-generated MIDI files (from Suno, Udio) into clean, guitarist-readable lead sheets.
-Output = melody line + chord symbols. NOT a transcription. NOT a notation editor.
+Converts AI-generated audio or MIDI files (from Suno, Udio) into clean, guitarist-readable lead sheets — then lets the user play along with the song in sync.
+
+Output = chord chart with real-time highlighting during audio playback. NOT a transcription. NOT a notation editor.
 
 **Core principle: "Make it playable, not accurate."**
 
@@ -19,10 +20,11 @@ Output = melody line + chord symbols. NOT a transcription. NOT a notation editor
 - Language: Python
 - Package manager: `uv` (not pip, not poetry)
 - Music library: `music21`
+- Audio transcription: Basic Pitch (Spotify)
 - Run command: `uv run python -m leadsheet.cli generate song.mid --out chart.xml`
-- Output format: MusicXML (`.xml`)
+- Output format: MusicXML (`.xml`) — will move to browser rendering in Phase 3
 - Entry point: `main.py`
-- Key files: `analysis.py`, `export.py`
+- Key files: `analysis.py`, `export.py`, `audio.py`, `simplify.py`, `cli.py`
 
 ---
 
@@ -31,7 +33,7 @@ Output = melody line + chord symbols. NOT a transcription. NOT a notation editor
 ### ✅ Built and Working
 - MIDI parsing (`midi.py`) — tempo, time sig, note extraction
 - Key detection (`analysis.py`) — music21 analyzer
-- Gesture classifier (`analysis.py`) — melody / dyad / strum classification
+- Gesture classifier (`analysis.py`) — melody / dyad / strum / arpeggio classification
 - Chord inference by measure (`analysis.py`)
 - Chord simplification (`simplify.py`) — extensions, enharmonics, slash chords
 - Capo suggestion (`simplify.py`) — frets 1–7, guitar-friendly keys
@@ -39,19 +41,21 @@ Output = melody line + chord symbols. NOT a transcription. NOT a notation editor
 - CLI (`cli.py`) — Typer, --simplify/--no-simplify, --inspect, rich console output
 - Audio transcription (`audio.py`) — Basic Pitch → temp MIDI → pipeline
 - Pitch range filter (`analysis.py`) — strips overtones outside E2–E5 (MIDI 40–76)
-- Calibrated against "Idea #1 - Acoustic Alternative.mp3": chord progression correct, thresholds left at defaults
+- Arpeggio detection — sequential fingerpicked notes collapse into chord symbol + arpeggio mark
+- Calibrated against "Idea #1 - Acoustic Alternative.mp3": chord progression correct
 
-### 🔄 Next Up: Arpeggio Detection
-- **Problem:** Fingerpicked guitar notes are sequential, not simultaneous. They land in separate 8th-note grid slots and get classified as scattered melody notes instead of chord arpeggios. This is the primary remaining cause of wonky melody output.
-- **Design:** See gesture table below. Runs of consecutive melody-classified notes that form a recognizable chord harmony within ~1–2 beats should collapse into a single `ARPEGGIO` gesture (chord symbol + arpeggio mark).
-- **Do not implement without explicit user instruction.**
+### 🔄 Active Development
+- Web UI shell (Phase 3 — now prioritised)
+- Chord output quality improvements (Essentia and Demucs evaluation in separate branch)
+- Playback sync (chord highlighting during audio playback — the core "aha" feature)
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 2)
-- Web UI (Phase 3)
-- Accounts/payment (Phase 4)
+- Accounts/auth (Phase 4)
+- Payment/paywall (Phase 4)
 - `--for guitar|piano` CLI flag (Phase 2)
 - Chord diagrams (Phase 2)
+- Melody tabs / fretboard mapper (Phase 4)
 
 ---
 
@@ -61,22 +65,24 @@ Output = melody line + chord symbols. NOT a transcription. NOT a notation editor
 but requires a paid Suno plan (Pro ~$10/month). Audio export is available to all free-tier
 users — a significantly larger audience.
 
-**Hero flow:** Suno/Udio free user exports MP3 → uploads → gets a playable lead sheet.
+**Hero flow:** Suno/Udio free user exports MP3 → uploads to web UI → gets a playable chord chart → presses play → follows chords in sync.
 
 **Audio quality findings (from testing):**
 - Suno/Udio synthesized audio transcribes well — chord progressions correct, gestures clean
-- Live acoustic guitar recordings are harder: overtones, tuning variance, and chord-melody
-  bleed (picked melody notes absorbed into chord clusters) degrade output quality
+- Live acoustic guitar recordings are harder: overtones, tuning variance, chord-melody bleed
 - These issues are specific to live recordings, not the primary use case
 
-**MIDI as premium path:** Supports users on paid Suno plans who want cleaner output.
-Worth keeping, but not the lead product story.
+**MIDI as premium path:** Supports users on paid Suno plans who want cleaner output. Worth keeping, not the lead product story.
 
-**Future audio improvement (not yet built):** Top-note extraction — when a strum cluster
-contains many notes, the highest pitch is often a melody note that was picked rather than
-strummed. Separating it would improve chord-melody style audio. Defer until validated needed.
+---
 
-Do not expand audio.py without explicit instruction.
+## The Core Product Loop (Keep This In Mind Always)
+
+1. **Upload** — user uploads an audio file (MP3/WAV)
+2. **Generate** — pipeline processes audio, outputs chord chart with timestamps
+3. **Play along** — user presses play, chords highlight in sync with audio playback
+
+Step 3 is the "aha" moment. Everything else is table stakes to get there.
 
 ---
 
@@ -93,16 +99,18 @@ Do not expand scope beyond what is stated for the session.
 
 | Element | Included | Notes |
 |---|---|---|
-| Melody line | ✅ | Single notes, readable rhythm |
-| Chord symbols | ✅ | Above the staff, per measure |
+| Chord symbols | ✅ | Primary output — per measure |
 | Key signature | ✅ | Guitar-friendly keys preferred |
-| Time signature | ✅ | Detected from MIDI |
+| Time signature | ✅ | Detected from input |
 | Chord simplification | ✅ | Extensions stripped to playable shapes |
+| Capo suggestion | ✅ | When key is guitar-unfriendly |
+| Melody line | 🔄 | Deprioritised — messy from Basic Pitch; may return in Phase 2 |
+| Chord timestamps | ✅ | Required for playback sync |
 | Full piano voicings | ❌ | Never add |
 | Bass line | ❌ | Never add |
 | Drum parts | ❌ | Never add |
-| Chord diagrams | ✅ Phase 2 | Rendered from chord symbols (e.g. "Am") — not from audio |
-| Melody tabs | 🔄 Phase 3+ | Requires fretboard mapper; defer until web UI exists |
+| Chord diagrams | Phase 2 | Rendered from chord symbols |
+| Melody tabs | Phase 4 | Requires fretboard mapper |
 
 ---
 
@@ -127,22 +135,19 @@ Built in `analysis.py`. Classifies note events into gesture types; rendered diff
 | Single-note line | 1 note per grid slot | Notes on staff | ✅ Done |
 | Dyad / power chord | 2 simultaneous notes | Interval notation | ✅ Done |
 | Chord strum | 3+ simultaneous notes | Chord symbol + slash notehead | ✅ Done |
-| Arpeggio | 3–6 notes from same harmony, sequential | Chord symbol + arpeggio mark | ❌ Next |
-
-**Arpeggio detection** is the active next task. Do not implement without user instruction.
+| Arpeggio | 3–6 notes from same harmony, sequential | Chord symbol + arpeggio mark | ✅ Done |
 
 ---
 
 ## Hard Rules — Never Do These
 
-- ❌ Do not add audio/MP3 input support
-- ❌ Do not build a web UI or API endpoint
-- ❌ Do not add PDF export
-- ❌ Do not add accounts, auth, or payment logic
 - ❌ Do not add drum, bass, or piano voicing output
+- ❌ Do not add accounts, auth, or payment logic until Phase 4
+- ❌ Do not add PDF export until Phase 2
 - ❌ Do not install new dependencies without asking first
 - ❌ Do not rename or restructure files without asking
 - ❌ Do not rewrite working modules to "improve" them unless asked
+- ❌ Do not expand audio.py without explicit instruction
 
 ---
 
@@ -177,11 +182,12 @@ Exported: chart.xml
 ## V1 Success Criteria (Definition of Done)
 
 V1 is complete when ALL of these are true:
-1. CLI runs end-to-end on a Suno/Udio audio export without errors
-2. MusicXML output opens in MuseScore/Flat.io without errors
-3. Chord symbols are guitar-playable (no unplayable extensions)
-4. Output is demonstrably cleaner than default MuseScore MIDI import
+1. User can upload an audio file via web UI and receive a chord chart
+2. Chord chart is accurate enough to play along with the song
+3. Audio plays back in browser with chords highlighting in sync
+4. Chord symbols are guitar-playable (no unplayable extensions)
 5. Validated on 5–10 real Suno/Udio audio exports across different genres
+6. Demo video recorded and posted to r/SunoAI and r/Guitar for feedback
 
 ---
 
@@ -189,19 +195,22 @@ V1 is complete when ALL of these are true:
 
 | Phase | Focus | Status |
 |---|---|---|
-| 1 | CLI engine. MIDI in, MusicXML out. Simplification. Arpeggio detection. | 🔄 Active |
-| 2 | Chord diagrams. Lead sheet PDF delivery. Formatting polish. | Not started |
-| 3 | Web UI (FastAPI + Railway). Audio upload. alphaTab rendering client-side. | Not started |
-| 4 | Melody tabs (fretboard mapper). Soft paywall. ~$10–15/month. | Not started |
+| 1 | CLI engine. Audio/MIDI in, MusicXML out. Simplification. Arpeggio detection. | ✅ Done |
+| 2 | Web UI shell. FastAPI backend. Upload → chord chart in browser. | 🔄 Active |
+| 3 | Playback sync. Chords highlight in real time during audio playback. | 🔄 Active |
+| 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
+| 5 | User accounts + chart storage. Auth. Saved charts dashboard. | Not started |
+| 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
+| 7 | Chord diagrams. PDF export. Formatting polish. | Not started |
+| 8 | Melody tabs (fretboard mapper). Post-validation only. | Not started |
 
 ## Phase 2/3 Rendering Stack (Decided, Not Yet Built)
 
-**Goal:** Deliver a printable lead sheet to the user — not a MusicXML file they have to open elsewhere.
-
-- **Chord diagrams** — rendered from chord symbol strings (e.g. "Am", "G7") using a JS library (ChordJS or similar). Tractable from what we already produce. Priority item for Phase 2.
-- **Standard notation** — rendered client-side from MusicXML using **alphaTab** (guitar-native JS renderer). alphaTab is preferred over Verovio because it understands guitar-specific notation natively.
-- **Melody tabs** — deferred. Requires a fretboard mapper (pitch → string + fret), which is a non-trivial problem. Add post-V1 once there's user demand signal.
-- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; alphaTab renders everything in the browser. Server stays pure Python, no notation rendering server-side.
+- **Standard notation / chord chart** — rendered client-side from MusicXML using **alphaTab** (guitar-native JS renderer)
+- **Chord diagrams** — rendered from chord symbol strings (e.g. "Am", "G7") using ChordJS or similar
+- **Playback sync** — Web Audio API reads playback position, highlights current chord block based on timestamps from pipeline output
+- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; alphaTab renders in browser. Server stays pure Python.
+- **Melody tabs** — deferred. Requires fretboard mapper. Add post-V1 once there's user demand signal.
 
 ---
 
@@ -212,5 +221,5 @@ V1 is complete when ALL of these are true:
 - Plays guitar (beginner–intermediate)
 - Not a music theory expert
 - Wants to sit down and play what the AI made
-- Values output they can print, read, and play in one session
+- Values a tool they can use in one session — upload, get chart, play along
 - Does NOT need: transcription accuracy, stems, MIDI editing, piano voicings
