@@ -1,4 +1,4 @@
-"""MusicXML export — renders gestures and chord symbols into a music21 Score."""
+"""MusicXML and plain-text export — renders a chord chart into a music21 Score or a .txt file."""
 
 from __future__ import annotations
 
@@ -6,18 +6,11 @@ from pathlib import Path
 
 import music21
 
-from leadsheet.analysis import Gesture, GestureKind, MeasureChord
+from leadsheet.analysis import Gesture, MeasureChord
 from leadsheet.midi import ParsedMidi
 
 
-# Standard quarter-length values, longest first (greedy snap)
-_STANDARD_DURATIONS = [4.0, 3.0, 2.0, 1.5, 1.0, 0.75, 0.5, 0.375, 0.25, 0.125]
-
-# Neutral pitch for slash noteheads (conventional lead sheet rhythm notation)
-_SLASH_PITCH = "B4"
-
-# A duration snaps up to the next standard value if it is within this fraction of it
-_SNAP_THRESHOLD = 0.75
+_MEASURES_PER_LINE = 4  # measures per row in plain-text output
 
 
 def export(
@@ -27,7 +20,12 @@ def export(
     chords: list[MeasureChord],
     out: Path,
 ) -> None:
-    """Write a MusicXML lead sheet: gesture notation + chord symbols, key sig, time sig."""
+    """Write a MusicXML chord chart: slash beats + chord symbols, key sig, time sig.
+
+    Each measure is filled with one slash notehead per beat. Chord symbols are placed
+    at the downbeat of each measure. The gestures parameter is accepted for API
+    compatibility but is not used — the chord list drives all output.
+    """
     part = music21.stream.Part()
     part.insert(0, music21.instrument.Guitar())
     part.insert(0, music21.clef.TrebleClef())
@@ -39,49 +37,47 @@ def export(
     part.insert(0, music21.key.Key(tonic, mode))
     part.insert(0, music21.tempo.MetronomeMark(number=round(parsed.bpm)))
 
-    # Gestures — render each type differently
-    for g in gestures:
-        part.insert(_snap(g.start_beat), _build_element(g))
-
-    # Chord symbols — one per measure, placed at the downbeat
+    # Chord symbols — one per measure at the downbeat
+    # (no notes inserted; makeNotation fills each measure with whole rests)
+    beats_per_measure = parsed.beats_per_measure
     for c in chords:
-        offset = (c.measure - 1) * parsed.beats_per_measure
+        offset = (c.measure - 1) * beats_per_measure
         try:
-            cs = music21.harmony.ChordSymbol(c.symbol)
-            part.insert(offset, cs)
+            part.insert(offset, music21.harmony.ChordSymbol(c.symbol))
         except Exception:
             print(f"Warning: skipping unparseable chord symbol '{c.symbol}' at measure {c.measure}")
 
-    music21.stream.Score([part]).write("musicxml", fp=str(out))
+    score = music21.stream.Score([part])
+    score.makeNotation(inPlace=True)
+    score.write("musicxml", fp=str(out))
 
 
-def _build_element(g: Gesture) -> music21.base.Music21Object:
-    """Return the music21 element that represents a gesture.
+def export_text(
+    chords: list[MeasureChord],
+    key: str,
+    capo_hint: str | None,
+    scales: list[str],
+    out: Path,
+) -> None:
+    """Write a plain-text chord chart: header line, scale suggestions, and chord grid.
 
-    Only melody gestures render as actual pitched notes. All other gestures
-    (dyad, strum, arpeggio) render as slash noteheads — matching standard
-    lead sheet convention where non-melodic events show rhythm, not pitch.
+    Measures are laid out _MEASURES_PER_LINE per row, padded to a uniform column width.
     """
-    ql = _quantize(g.duration_beat)
-    if g.kind == GestureKind.MELODY:
-        n = music21.note.Note(g.pitches[0])
-        n.quarterLength = ql
-        return n
-    # dyad, strum, arpeggio — slash notehead; chord symbol placed by the chord list
-    n = music21.note.Note(_SLASH_PITCH)
-    n.notehead = "slash"
-    n.quarterLength = ql
-    return n
+    lines: list[str] = []
 
+    header = f"Key: {key}"
+    if capo_hint:
+        header += f"  |  {capo_hint.capitalize()}"
+    lines.append(header)
 
-def _snap(beat: float, grid: float = 0.125) -> float:
-    """Round a beat position to the nearest 32nd-note grid."""
-    return round(beat / grid) * grid
+    if scales:
+        lines.append(f"Scales: {' / '.join(scales)}")
 
+    lines.append("")
 
-def _quantize(beats: float) -> float:
-    """Snap a duration in beats to the nearest standard note value."""
-    for dur in _STANDARD_DURATIONS:
-        if beats >= dur * _SNAP_THRESHOLD:
-            return dur
-    return 0.125  # floor: 32nd note
+    col_width = max((len(c.symbol) for c in chords), default=4) + 2
+    for i in range(0, len(chords), _MEASURES_PER_LINE):
+        row = chords[i : i + _MEASURES_PER_LINE]
+        lines.append("| " + " | ".join(c.symbol.ljust(col_width) for c in row) + " |")
+
+    out.write_text("\n".join(lines) + "\n")

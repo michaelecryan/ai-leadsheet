@@ -12,7 +12,7 @@ from rich.table import Table
 
 from leadsheet import analysis, export as export_mod, midi
 from leadsheet import simplify as simplify_mod
-from leadsheet.analysis import Gesture, GestureKind
+from leadsheet.analysis import Gesture, GestureKind, suggest_scales
 
 app = typer.Typer(help="Convert AI-generated MIDI or audio to a guitar lead sheet.")
 console = Console()
@@ -59,12 +59,18 @@ def generate(
     console.print(f"\nDetected Key: [bold green]{key_display}[/bold green]")
     if capo_hint:
         console.print(f"  [yellow]Tip: {capo_hint}[/yellow]")
+    scales = suggest_scales(key_display)
+    if scales:
+        console.print(f"  Scales: {' / '.join(scales)}")
 
     progression = " | ".join(c.symbol for c in chords_display)
     console.print(f"Chord progression: {progression}")
 
     export_mod.export(parsed, key_display, result.gestures, chords_display, out)
+    txt_out = out.with_suffix(".txt")
+    export_mod.export_text(chords_display, key_display, capo_hint, scales, txt_out)
     console.print(f"\nExported: [bold]{out}[/bold]")
+    console.print(f"Text chart: [bold]{txt_out}[/bold]")
 
 
 def _pitch_name(midi_num: int) -> str:

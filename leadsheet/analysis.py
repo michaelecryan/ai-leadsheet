@@ -78,7 +78,7 @@ _MIN_DURATION = 0.5  # drop gestures shorter than an 8th note (noise/transients)
 
 # Guitar practical pitch range — notes outside this are overtones or sub-bass noise.
 # E2 (MIDI 40) = open low E string; B4 (MIDI 71) = 7th fret high e string (readable in treble clef).
-_MIN_PITCH = 40   # E2
+_MIN_PITCH = 52   # E3 — lowest note readable in treble clef without excessive ledger lines
 _MAX_PITCH = 76   # E5 — upper limit before overtone territory for acoustic guitar
 
 # Arpeggio detection thresholds
@@ -207,6 +207,30 @@ def _chords_by_measure(parsed: ParsedMidi) -> list[MeasureChord]:
         MeasureChord(measure=m, symbol=_chord_symbol(tuple(pitches)))
         for m, pitches in sorted(pitches_by_measure.items())
     ]
+
+
+# Guitar-friendly scale suggestions keyed by (tonic, mode)
+_GUITAR_SCALES: dict[tuple[str, str], list[str]] = {
+    ("A", "minor"): ["A minor pentatonic", "A natural minor"],
+    ("E", "minor"): ["E minor pentatonic", "E natural minor"],
+    ("D", "minor"): ["D minor pentatonic", "D natural minor"],
+    ("B", "minor"): ["B minor pentatonic", "B natural minor"],
+    ("F#", "minor"): ["F# minor pentatonic", "F# natural minor"],
+    ("C#", "minor"): ["C# minor pentatonic", "C# natural minor"],
+    ("C", "major"): ["C major pentatonic", "A minor pentatonic"],
+    ("G", "major"): ["G major pentatonic", "E minor pentatonic"],
+    ("D", "major"): ["D major pentatonic", "B minor pentatonic"],
+    ("A", "major"): ["A major pentatonic", "F# minor pentatonic"],
+    ("E", "major"): ["E major pentatonic", "C# minor pentatonic"],
+    ("F", "major"): ["F major pentatonic", "D minor pentatonic"],
+    ("Bb", "major"): ["Bb major pentatonic", "G minor pentatonic"],
+}
+
+
+def suggest_scales(key: str) -> list[str]:
+    """Return guitar-friendly scale suggestions for a detected key string (e.g. 'F major')."""
+    tonic, mode = key.split(" ", 1)
+    return _GUITAR_SCALES.get((tonic, mode), [f"{tonic} {mode}"])
 
 
 _QUALITY_SUFFIX: dict[str, str] = {
