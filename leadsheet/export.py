@@ -75,6 +75,7 @@ def export_text(
 
     lines.append("")
 
+    # Pad all symbols to the same width so columns stay aligned across rows
     col_width = max((len(c.symbol) for c in chords), default=4) + 2
     for i in range(0, len(chords), _MEASURES_PER_LINE):
         row = chords[i : i + _MEASURES_PER_LINE]
