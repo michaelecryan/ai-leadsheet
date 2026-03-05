@@ -51,7 +51,7 @@ def generate(
         key_display = simplified.key
         chords_display = simplified.chords
         if simplified.capo and simplified.capo_shape_key:
-            capo_hint = f"capo {simplified.capo} and play in {simplified.capo_shape_key} major shapes"
+            capo_hint = f"Capo {simplified.capo} and play in {simplified.capo_shape_key} shapes"
     else:
         key_display = result.key
         chords_display = result.chords

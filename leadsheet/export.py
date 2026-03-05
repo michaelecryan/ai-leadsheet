@@ -67,7 +67,7 @@ def export_text(
 
     header = f"Key: {key}"
     if capo_hint:
-        header += f"  |  {capo_hint.capitalize()}"
+        header += f"  |  {capo_hint}"
     lines.append(header)
 
     if scales:

@@ -10,6 +10,7 @@ Run locally:
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from leadsheet import analysis, midi
 from leadsheet import simplify as simplify_mod
 from leadsheet.analysis import suggest_scales
+from leadsheet.midi import ParsedMidi
 
 app = FastAPI(title="ai-leadsheet API", version="0.1.0")
 
@@ -34,6 +36,9 @@ app.add_middleware(
 _AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
 _MIDI_EXTENSIONS = {".mid", ".midi"}
 _ALLOWED_EXTENSIONS = _AUDIO_EXTENSIONS | _MIDI_EXTENSIONS
+
+# NOTE: _AUDIO_EXTENSIONS is also defined in leadsheet/cli.py. Both sets should
+# stay in sync. A shared constants module is the right long-term fix.
 
 
 @app.get("/health")
@@ -62,26 +67,21 @@ async def upload(file: UploadFile = File(...)) -> dict:
             detail=f"Unsupported file type '{suffix}'. Accepted: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
         )
 
-    # Write upload to a temp file so the pipeline can read it from disk
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(await file.read())
-        tmp_path = Path(tmp.name)
-
+    # Stream upload to a temp file in 1 MB chunks (avoids loading large audio into memory at once)
+    tmp_path: Path | None = None
     try:
-        # Run the pipeline — same logic as cli.py
-        if suffix in _AUDIO_EXTENSIONS:
-            from leadsheet import audio as audio_mod  # lazy import (heavy deps)
-            parsed = audio_mod.load_audio(tmp_path)
-        else:
-            parsed = midi.load(tmp_path)
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            while chunk := await file.read(1024 * 1024):
+                tmp.write(chunk)
+            tmp_path = Path(tmp.name)
 
-        result = analysis.analyse(parsed)
-        simplified = simplify_mod.simplify(result)
+        # Run the CPU-heavy pipeline off the event loop so other requests aren't blocked
+        parsed, simplified = await asyncio.to_thread(_run_pipeline, tmp_path, suffix)
 
         key = simplified.key
         scales = suggest_scales(key)
 
-        capo: int | None = simplified.capo if simplified.capo else None
+        capo = simplified.capo
         capo_hint: str | None = None
         if capo and simplified.capo_shape_key:
             capo_hint = f"Capo {capo} and play in {simplified.capo_shape_key} shapes"
@@ -100,11 +100,13 @@ async def upload(file: UploadFile = File(...)) -> dict:
             for c in simplified.chords
         ]
 
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {exc}") from exc
     finally:
-        # Always clean up the temp file
-        tmp_path.unlink(missing_ok=True)
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
 
     return {
         "status": "ok",
@@ -117,3 +119,20 @@ async def upload(file: UploadFile = File(...)) -> dict:
         "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
         "chords": chords,
     }
+
+
+def _run_pipeline(tmp_path: Path, suffix: str) -> tuple[ParsedMidi, object]:
+    """Load, analyse, and simplify an audio or MIDI file.
+
+    Runs synchronously — call via asyncio.to_thread() from async endpoints
+    so the event loop is not blocked during CPU-heavy transcription.
+    """
+    if suffix in _AUDIO_EXTENSIONS:
+        from leadsheet import audio as audio_mod  # lazy import (heavy deps)
+        parsed = audio_mod.load_audio(tmp_path)
+    else:
+        parsed = midi.load(tmp_path)
+
+    result = analysis.analyse(parsed)
+    simplified = simplify_mod.simplify(result)
+    return parsed, simplified
