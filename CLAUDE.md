@@ -51,15 +51,18 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - Pitch range filter (`analysis.py`) — strips overtones outside E2–E5 (MIDI 40–76)
 - Arpeggio detection — sequential fingerpicked notes collapse into chord symbol + arpeggio mark
 - FastAPI backend (`main.py`) — `/health` and `/upload` endpoints, accepts audio/MIDI, returns chord chart JSON
-- Web UI — file upload, key display with plain-English explanation, capo tip, tempo, time sig, scales, chord chart rendered in browser
-- Chord timestamps in pipeline output (`time_seconds` per chord, drives playback sync)
+- Web UI (`frontend/index.html`) — drag-and-drop upload, loading state with time expectation copy, key + capo + scales display
+- "Your song in X chords" hero section — top 6 chords by frequency with pure SVG finger diagrams (~30 chord shapes in `CHORD_SHAPES` lookup)
+- SVG chord diagram renderer (`buildChordSvg()` in `frontend/index.html`) — no external library; handles open strings, muted strings, barre chords
+- Bar-by-bar chord grid — full progression below hero section
+- Chord timestamps in pipeline output (`time_seconds` per chord, wired up ready for playback sync)
+- Railway deployment config — `Procfile` + `railway.toml` committed; app binds to `0.0.0.0:$PORT`, healthcheck at `/health`
 
 ### 🔄 Active Development
-- Audio playback in browser with real-time chord highlighting (playback sync)
-- Large chord diagrams for non-musicians (ChordJS or equivalent)
-- Education layer — contextual JustinGuitar / Marty Music lesson surfacing
-- Chord output quality improvements (Essentia and Demucs evaluation in separate branch)
-- Deployment to public URL (Railway)
+- Railway deployment — config pushed, deploy deferred (Railway dashboard outage during session; resume next session)
+- Audio playback in browser with real-time chord highlighting (Phase 3 — playback sync)
+- Education layer — contextual JustinGuitar / Marty Music lesson surfacing (Phase 3b)
+- Chord output quality improvements (Essentia and Demucs evaluation in separate branch — Phase 4)
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
@@ -75,8 +78,8 @@ The user is a non-musician. They do not know what a chord progression is. They d
 ## Known Issues
 
 - **Processing speed:** Basic Pitch takes 20–30 seconds for a full track. Workaround under evaluation: process first 60 seconds for fast initial result, full track in background.
-- **Progress indicator:** No loading state currently shown during processing. Non-musicians will assume it's broken. Add progress indicator with beginner-friendly copy before public launch.
-- **Chord chart noise:** Full bar-by-bar chart is overwhelming for a non-musician. Need chord summary ("Your song uses 4 main chords: Am, G, F, C") at top before full chart.
+- **Progress indicator:** ~~No loading state.~~ Resolved in Issue #6 — loading copy now reads "Transcribing your track… This usually takes 20–40 seconds. Hold tight."
+- **Chord chart noise:** ~~Full bar-by-bar chart is overwhelming.~~ Resolved in Issue #6 — hero section now shows top 6 chords by frequency; bar chart is secondary.
 - **Diminished chords:** F#dim, Adim, Bdim appearing in output — simplification should collapse these to nearest playable neighbour for non-musician audience.
 
 ---
@@ -284,11 +287,12 @@ V1 is complete when ALL of these are true:
 
 ## Phase 3 Rendering Stack (Decided, Partially Built)
 
-- **Chord chart** — rendered in browser from JSON output (bar-by-bar chord symbols)
-- **Key display** — plain-English explanation + capo tip already rendering
-- **Chord diagrams** — to be rendered from chord symbol strings using ChordJS or equivalent
-- **Playback sync** — Web Audio API reads playback position, highlights current chord block based on timestamps from pipeline output
-- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; browser renderer handles display. Server stays pure Python.
+- **Chord chart** — rendered in browser from JSON output (bar-by-bar chord symbols) ✅
+- **Key display** — plain-English explanation + capo tip rendering ✅
+- **Chord diagrams** — pure SVG renderer built in `frontend/index.html`; `CHORD_SHAPES` lookup + `buildChordSvg()` ✅
+- **Hero section** — "Your song in X chords" with top chords by frequency ✅
+- **Playback sync** — Web Audio API reads playback position, highlights current chord block based on `time_seconds` timestamps — next to build (Phase 3)
+- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; browser renders display. Server stays pure Python. ✅
 - **Melody tabs** — deferred. Requires fretboard mapper. Add post-V1 only if user demand signals it.
 
 ---
