@@ -23,17 +23,8 @@
       margin-bottom: 48px;
     }
 
-    header h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    header p {
-      margin-top: 8px;
-      color: #888;
-      font-size: 1rem;
-    }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p  { margin-top: 8px; color: #888; font-size: 1rem; }
 
     /* ── Drop zone ── */
     #drop-zone {
@@ -53,28 +44,10 @@
       background: rgba(108, 99, 255, 0.06);
     }
 
-    #drop-zone .icon {
-      font-size: 2.5rem;
-      margin-bottom: 16px;
-    }
-
-    #drop-zone h2 {
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    #drop-zone p {
-      color: #888;
-      font-size: 0.875rem;
-    }
-
-    #drop-zone .file-hint {
-      margin-top: 12px;
-      font-size: 0.75rem;
-      color: #555;
-    }
-
+    #drop-zone .icon { font-size: 2.5rem; margin-bottom: 16px; }
+    #drop-zone h2   { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; }
+    #drop-zone p    { color: #888; font-size: 0.875rem; }
+    #drop-zone .file-hint { margin-top: 12px; font-size: 0.75rem; color: #555; }
     #file-input { display: none; }
 
     /* ── Loading ── */
@@ -84,11 +57,11 @@
       align-items: center;
       gap: 16px;
       margin-top: 48px;
+      text-align: center;
     }
 
     .spinner {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border: 3px solid #333;
       border-top-color: #6c63ff;
       border-radius: 50%;
@@ -97,10 +70,8 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    #loading p {
-      color: #888;
-      font-size: 0.9rem;
-    }
+    #loading .loading-main { color: #ccc; font-size: 1rem; }
+    #loading .loading-sub  { color: #555; font-size: 0.8rem; margin-top: 4px; }
 
     /* ── Error ── */
     #error-box {
@@ -122,59 +93,29 @@
     #result {
       display: none;
       width: 100%;
-      max-width: 560px;
+      max-width: 720px;
       margin-top: 40px;
     }
 
-    .result-section {
-      margin-bottom: 32px;
-    }
+    .result-section { margin-bottom: 36px; }
 
     .result-label {
       font-size: 0.7rem;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #666;
-      margin-bottom: 8px;
-    }
-
-    .key-display {
-      font-size: 2.2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .key-plain {
-      font-size: 0.95rem;
-      color: #888;
-      margin-top: 4px;
-    }
-
-    .meta-row {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-
-    .meta-item {
-      background: #1a1a1a;
-      border-radius: 10px;
-      padding: 12px 18px;
-    }
-
-    .meta-item .meta-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
       color: #555;
-      margin-bottom: 4px;
+      margin-bottom: 10px;
     }
 
-    .meta-item .meta-value {
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
+    .key-display { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; }
+    .key-plain   { font-size: 0.95rem; color: #888; margin-top: 4px; }
+
+    .meta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    .meta-item { background: #1a1a1a; border-radius: 10px; padding: 12px 18px; }
+    .meta-item .meta-label  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 4px; }
+    .meta-item .meta-value  { font-size: 1.1rem; font-weight: 600; }
 
     .capo-banner {
       background: rgba(108, 99, 255, 0.12);
@@ -185,45 +126,80 @@
       color: #a89fff;
     }
 
-    .scales-list {
+    .scales-list { display: flex; gap: 8px; flex-wrap: wrap; }
+    .scale-tag   { background: #1a1a1a; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; color: #ccc; }
+
+    /* ── Hero chord section ── */
+    #hero-section { margin-bottom: 40px; }
+
+    .hero-heading {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+
+    .hero-heading span { color: #6c63ff; }
+
+    #hero-grid {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 16px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      /* hide scrollbar on webkit */
+      -webkit-overflow-scrolling: touch;
     }
 
-    .scale-tag {
-      background: #1a1a1a;
-      border-radius: 6px;
-      padding: 6px 12px;
-      font-size: 0.85rem;
-      color: #ccc;
+    #hero-grid::-webkit-scrollbar { height: 4px; }
+    #hero-grid::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 2px; }
+    #hero-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    .hero-chord {
+      flex: 0 0 auto;
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 14px;
+      padding: 20px 18px 16px;
+      text-align: center;
+      min-width: 120px;
     }
 
-    /* ── Chord grid ── */
+    .hero-chord-name {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+
+    .hero-chord-diagram svg { display: block; margin: 0 auto; }
+
+    .hero-chord-no-diagram {
+      width: 100px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #444;
+      font-size: 0.75rem;
+      margin: 0 auto;
+    }
+
+    /* ── Bar-by-bar chord chart ── */
     .chord-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+      gap: 8px;
     }
 
     .chord-card {
       background: #1a1a1a;
-      border-radius: 10px;
-      padding: 14px 12px;
+      border-radius: 8px;
+      padding: 10px 8px;
       text-align: center;
     }
 
-    .chord-card .measure-num {
-      font-size: 0.65rem;
-      color: #444;
-      margin-bottom: 6px;
-    }
-
-    .chord-card .chord-symbol {
-      font-size: 1.3rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
+    .chord-card .measure-num  { font-size: 0.6rem; color: #3a3a3a; margin-bottom: 4px; }
+    .chord-card .chord-symbol { font-size: 1.1rem; font-weight: 700; }
 
     /* ── Try again ── */
     #try-again {
@@ -239,10 +215,7 @@
       transition: border-color 0.15s, color 0.15s;
     }
 
-    #try-again:hover {
-      border-color: #555;
-      color: #ccc;
-    }
+    #try-again:hover { border-color: #555; color: #ccc; }
   </style>
 </head>
 <body>
@@ -261,7 +234,8 @@
 
   <div id="loading">
     <div class="spinner"></div>
-    <p>Analysing your track…</p>
+    <p class="loading-main">Transcribing your track…</p>
+    <p class="loading-sub">This usually takes 20–40 seconds. Hold tight.</p>
   </div>
 
   <div id="error-box">
@@ -273,11 +247,17 @@
     <div class="result-section">
       <div class="result-label">Key</div>
       <div class="key-display" id="key-display"></div>
-      <div class="key-plain" id="key-plain"></div>
+      <div class="key-plain"   id="key-plain"></div>
     </div>
 
     <div id="capo-section" class="result-section" style="display:none">
       <div class="capo-banner" id="capo-banner"></div>
+    </div>
+
+    <!-- Hero: top chords with diagrams -->
+    <div id="hero-section" class="result-section">
+      <div class="hero-heading" id="hero-heading"></div>
+      <div id="hero-grid"></div>
     </div>
 
     <div class="result-section">
@@ -290,7 +270,7 @@
     </div>
 
     <div class="result-section">
-      <div class="result-label">Chord chart</div>
+      <div class="result-label">Full progression — bar by bar</div>
       <div class="chord-grid" id="chord-grid"></div>
     </div>
   </div>
@@ -298,19 +278,139 @@
   <button id="try-again">Upload another track</button>
 
   <script>
-    const dropZone   = document.getElementById("drop-zone");
-    const fileInput  = document.getElementById("file-input");
-    const loading    = document.getElementById("loading");
-    const errorBox   = document.getElementById("error-box");
-    const errorDetail= document.getElementById("error-detail");
-    const result     = document.getElementById("result");
-    const tryAgain   = document.getElementById("try-again");
+    // ── Chord shape data ─────────────────────────────────────────────────────
+    // frets: [E, A, D, G, B, e] — low string to high string
+    // -1 = muted, 0 = open, 1+ = fret number
+    // barre: fret number where barre bar is drawn (optional)
+    // baseFret: starting fret for display (default 1)
+    const CHORD_SHAPES = {
+      // Major open chords
+      "C":     { frets: [-1, 3, 2, 0, 1, 0] },
+      "D":     { frets: [-1, -1, 0, 2, 3, 2] },
+      "E":     { frets: [0, 2, 2, 1, 0, 0] },
+      "F":     { frets: [1, 1, 2, 3, 3, 1], barre: 1 },
+      "G":     { frets: [3, 2, 0, 0, 0, 3] },
+      "A":     { frets: [-1, 0, 2, 2, 2, 0] },
+      "B":     { frets: [-1, 2, 4, 4, 4, 2], barre: 2, baseFret: 2 },
+      // Minor
+      "Am":    { frets: [-1, 0, 2, 2, 1, 0] },
+      "Bm":    { frets: [-1, 2, 4, 4, 3, 2], barre: 2, baseFret: 2 },
+      "Cm":    { frets: [-1, 3, 5, 5, 4, 3], barre: 3, baseFret: 3 },
+      "Dm":    { frets: [-1, -1, 0, 2, 3, 1] },
+      "Em":    { frets: [0, 2, 2, 0, 0, 0] },
+      "Fm":    { frets: [1, 3, 3, 1, 1, 1], barre: 1 },
+      "F#m":   { frets: [2, 4, 4, 2, 2, 2], barre: 2, baseFret: 2 },
+      "Gm":    { frets: [3, 5, 5, 3, 3, 3], barre: 3, baseFret: 3 },
+      // 7th chords
+      "A7":    { frets: [-1, 0, 2, 0, 2, 0] },
+      "B7":    { frets: [-1, 2, 1, 2, 0, 2] },
+      "C7":    { frets: [-1, 3, 2, 3, 1, 0] },
+      "D7":    { frets: [-1, -1, 0, 2, 1, 2] },
+      "E7":    { frets: [0, 2, 0, 1, 0, 0] },
+      "G7":    { frets: [3, 2, 0, 0, 0, 1] },
+      // Major 7
+      "Cmaj7": { frets: [-1, 3, 2, 0, 0, 0] },
+      "Fmaj7": { frets: [-1, -1, 3, 2, 1, 0] },
+      "Gmaj7": { frets: [3, 2, 0, 0, 0, 2] },
+      "Amaj7": { frets: [-1, 0, 2, 1, 2, 0] },
+      // Minor 7
+      "Am7":   { frets: [-1, 0, 2, 0, 1, 0] },
+      "Dm7":   { frets: [-1, -1, 0, 2, 1, 1] },
+      "Em7":   { frets: [0, 2, 2, 0, 3, 0] },
+      // Sus / add
+      "Dsus2": { frets: [-1, -1, 0, 2, 3, 0] },
+      "Asus2": { frets: [-1, 0, 2, 2, 0, 0] },
+      "Cadd9": { frets: [-1, 3, 2, 0, 3, 0] },
+      "Esus4": { frets: [0, 2, 2, 2, 0, 0] },
+    };
 
-    // ── Drop zone interactions ──────────────────────────────────────────────
+    // ── SVG chord diagram renderer ───────────────────────────────────────────
+    const STRING_GAP  = 26;
+    const FRET_GAP    = 28;
+    const PAD_X       = 22;
+    const PAD_TOP     = 30; // space above fret 0 for open/muted markers
+    const DOT_R       = 10;
+    const NUM_STRINGS = 6;
+    const NUM_FRETS   = 4; // rows shown
 
-    dropZone.addEventListener("click", () => fileInput.click());
+    const SVG_W = (NUM_STRINGS - 1) * STRING_GAP + PAD_X * 2;
+    const SVG_H = NUM_FRETS * FRET_GAP + PAD_TOP + 10;
+
+    function buildChordSvg(symbol) {
+      const data = CHORD_SHAPES[symbol];
+      if (!data) return null;
+
+      const { frets, barre, baseFret = 1 } = data;
+      const els = [];
+
+      // Strings (vertical)
+      for (let s = 0; s < NUM_STRINGS; s++) {
+        const x = PAD_X + s * STRING_GAP;
+        els.push(`<line x1="${x}" y1="${PAD_TOP}" x2="${x}" y2="${PAD_TOP + NUM_FRETS * FRET_GAP}" stroke="#444" stroke-width="1.5"/>`);
+      }
+
+      // Frets (horizontal) — thick nut at fret 0 when baseFret === 1
+      for (let f = 0; f <= NUM_FRETS; f++) {
+        const y  = PAD_TOP + f * FRET_GAP;
+        const sw = (f === 0 && baseFret === 1) ? 4 : 1.5;
+        const cl = (f === 0 && baseFret === 1) ? "#999" : "#444";
+        els.push(`<line x1="${PAD_X}" y1="${y}" x2="${PAD_X + (NUM_STRINGS - 1) * STRING_GAP}" y2="${y}" stroke="${cl}" stroke-width="${sw}"/>`);
+      }
+
+      // Open / muted markers above nut
+      for (let s = 0; s < NUM_STRINGS; s++) {
+        const x    = PAD_X + s * STRING_GAP;
+        const fret = frets[s];
+        if (fret === 0) {
+          els.push(`<circle cx="${x}" cy="${PAD_TOP - 12}" r="6" fill="none" stroke="#777" stroke-width="1.5"/>`);
+        } else if (fret === -1) {
+          els.push(`<text x="${x}" y="${PAD_TOP - 6}" text-anchor="middle" fill="#555" font-size="14" font-family="sans-serif">×</text>`);
+        }
+      }
+
+      // Barre bar (drawn first so dots sit on top)
+      if (barre != null) {
+        const barreStrings = frets
+          .map((f, i) => (f === barre ? i : -1))
+          .filter(i => i >= 0);
+        if (barreStrings.length >= 2) {
+          const x1 = PAD_X + barreStrings[0] * STRING_GAP;
+          const x2 = PAD_X + barreStrings[barreStrings.length - 1] * STRING_GAP;
+          const cy = PAD_TOP + (barre - baseFret + 0.5) * FRET_GAP;
+          els.push(`<rect x="${x1 - DOT_R}" y="${cy - DOT_R}" width="${x2 - x1 + DOT_R * 2}" height="${DOT_R * 2}" rx="${DOT_R}" fill="#6c63ff"/>`);
+        }
+      }
+
+      // Finger dots (skip strings covered by barre)
+      for (let s = 0; s < NUM_STRINGS; s++) {
+        const fret = frets[s];
+        if (fret > 0 && fret !== barre) {
+          const x  = PAD_X + s * STRING_GAP;
+          const cy = PAD_TOP + (fret - baseFret + 0.5) * FRET_GAP;
+          els.push(`<circle cx="${x}" cy="${cy}" r="${DOT_R}" fill="#6c63ff"/>`);
+        }
+      }
+
+      // Base fret label (when not starting at fret 1)
+      if (baseFret > 1) {
+        els.push(`<text x="${SVG_W - 1}" y="${PAD_TOP + 12}" fill="#666" font-size="10" font-family="sans-serif" text-anchor="end">${baseFret}fr</text>`);
+      }
+
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" aria-label="${symbol} chord diagram">${els.join("")}</svg>`;
+    }
+
+    // ── DOM refs ─────────────────────────────────────────────────────────────
+    const dropZone    = document.getElementById("drop-zone");
+    const fileInput   = document.getElementById("file-input");
+    const loading     = document.getElementById("loading");
+    const errorBox    = document.getElementById("error-box");
+    const errorDetail = document.getElementById("error-detail");
+    const result      = document.getElementById("result");
+    const tryAgain    = document.getElementById("try-again");
+
+    // ── Drop zone interactions ───────────────────────────────────────────────
+    dropZone.addEventListener("click",   () => fileInput.click());
     dropZone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
-
     dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
     dropZone.addEventListener("drop", e => {
@@ -319,44 +419,31 @@
       const file = e.dataTransfer.files[0];
       if (file) upload(file);
     });
-
-    fileInput.addEventListener("change", () => {
-      if (fileInput.files[0]) upload(fileInput.files[0]);
-    });
-
+    fileInput.addEventListener("change", () => { if (fileInput.files[0]) upload(fileInput.files[0]); });
     tryAgain.addEventListener("click", reset);
 
-    // ── Upload ──────────────────────────────────────────────────────────────
-
+    // ── Upload ───────────────────────────────────────────────────────────────
     async function upload(file) {
       showLoading();
-
       const formData = new FormData();
       formData.append("file", file);
-
       try {
-        const res = await fetch("/upload", { method: "POST", body: formData });
+        const res  = await fetch("/upload", { method: "POST", body: formData });
         const data = await res.json();
-
-        if (!res.ok) {
-          showError(data.detail || `Server error ${res.status}`);
-          return;
-        }
-
+        if (!res.ok) { showError(data.detail || `Server error ${res.status}`); return; }
         showResult(data);
-      } catch (err) {
+      } catch {
         showError("Could not reach the server. Is the backend running?");
       }
     }
 
-    // ── Render result ───────────────────────────────────────────────────────
-
+    // ── Render result ────────────────────────────────────────────────────────
     function showResult(data) {
       hideAll();
 
       // Key
       document.getElementById("key-display").textContent = data.key;
-      document.getElementById("key-plain").textContent = plainEnglishKey(data.key);
+      document.getElementById("key-plain").textContent   = plainEnglishKey(data.key);
 
       // Capo
       const capoSection = document.getElementById("capo-section");
@@ -367,6 +454,28 @@
         capoSection.style.display = "none";
       }
 
+      // Hero: top chords by frequency
+      const counts = {};
+      data.chords.forEach(c => { counts[c.symbol] = (counts[c.symbol] || 0) + 1; });
+      const topChords = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([sym]) => sym);
+
+      const n = topChords.length;
+      document.getElementById("hero-heading").innerHTML =
+        `Your song in <span>${n} chord${n !== 1 ? "s" : ""}</span>`;
+
+      document.getElementById("hero-grid").innerHTML = topChords.map(sym => {
+        const svg = buildChordSvg(sym);
+        return `<div class="hero-chord">
+          <div class="hero-chord-name">${sym}</div>
+          <div class="hero-chord-diagram">
+            ${svg || '<div class="hero-chord-no-diagram">–</div>'}
+          </div>
+        </div>`;
+      }).join("");
+
       // BPM + time signature
       const metaRow = document.getElementById("meta-row");
       metaRow.innerHTML = "";
@@ -375,30 +484,27 @@
 
       // Scales
       const scalesSection = document.getElementById("scales-section");
-      const scalesList = document.getElementById("scales-list");
       if (data.scales && data.scales.length) {
-        scalesList.innerHTML = data.scales.map(s => `<span class="scale-tag">${s}</span>`).join("");
+        document.getElementById("scales-list").innerHTML =
+          data.scales.map(s => `<span class="scale-tag">${s}</span>`).join("");
         scalesSection.style.display = "";
       } else {
         scalesSection.style.display = "none";
       }
 
-      // Chord grid
-      const grid = document.getElementById("chord-grid");
-      grid.innerHTML = data.chords.map(c =>
+      // Bar-by-bar chord chart
+      document.getElementById("chord-grid").innerHTML = data.chords.map(c =>
         `<div class="chord-card">
           <div class="measure-num">Bar ${c.measure}</div>
           <div class="chord-symbol">${c.symbol}</div>
         </div>`
       ).join("");
 
-      result.style.display = "block";
+      result.style.display  = "block";
       tryAgain.style.display = "inline-block";
     }
 
     function plainEnglishKey(key) {
-      // "E minor" → "The key of E minor — a darker, more emotional sound."
-      // "C major" → "The key of C major — bright and clear."
       const lower = key.toLowerCase();
       if (lower.includes("minor")) return `The key of ${key} — gives your song a darker, more emotional feel.`;
       if (lower.includes("major")) return `The key of ${key} — bright and clear sound.`;
@@ -412,33 +518,32 @@
       return el;
     }
 
-    // ── State helpers ───────────────────────────────────────────────────────
-
+    // ── State helpers ────────────────────────────────────────────────────────
     function showLoading() {
       hideAll();
       dropZone.style.display = "none";
-      loading.style.display = "flex";
+      loading.style.display  = "flex";
     }
 
     function showError(msg) {
       hideAll();
-      errorDetail.textContent = msg;
-      errorBox.style.display = "block";
-      tryAgain.style.display = "inline-block";
-      dropZone.style.display = "block";
+      errorDetail.textContent    = msg;
+      errorBox.style.display     = "block";
+      tryAgain.style.display     = "inline-block";
+      dropZone.style.display     = "block";
     }
 
     function hideAll() {
-      loading.style.display = "none";
+      loading.style.display  = "none";
       errorBox.style.display = "none";
-      result.style.display = "none";
+      result.style.display   = "none";
       tryAgain.style.display = "none";
     }
 
     function reset() {
       hideAll();
       dropZone.style.display = "block";
-      fileInput.value = "";
+      fileInput.value        = "";
     }
   </script>
 </body>
