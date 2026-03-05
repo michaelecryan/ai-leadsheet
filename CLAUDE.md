@@ -7,11 +7,15 @@
 
 ## What This Product Does
 
-Converts AI-generated audio or MIDI files (from Suno, Udio) into clean, guitarist-readable lead sheets — then lets the user play along with the song in sync.
+Takes a Suno or Udio song and turns it into a music-curious non-musician's first guitar lesson — automatically.
 
-Output = chord chart with real-time highlighting during audio playback. NOT a transcription. NOT a notation editor.
+Upload AI song → get key (plain English) → get 3–5 chords (large finger diagrams) → play along in sync → get pointed to the right JustinGuitar / Marty Music lesson.
 
-**Core principle: "Make it playable, not accurate."**
+**Core principle: "Your AI song as your first music lesson."**
+
+**The magic trick:** a song that sounds complex is usually 4 chords. The product reveals that simplicity in a way that feels like a revelation, not a disappointment. "Your song in 4 chords" is the hero moment.
+
+The user is a non-musician. They do not know what a chord progression is. They do not know what Chordify is. They are motivated because it is their song. Design everything for that person.
 
 ---
 
@@ -50,12 +54,12 @@ Output = chord chart with real-time highlighting during audio playback. NOT a tr
 - Playback sync (chord highlighting during audio playback — the core "aha" feature)
 
 ### ❌ Not Started (Future Phases)
-- PDF export (Phase 2)
-- Accounts/auth (Phase 4)
-- Payment/paywall (Phase 4)
-- `--for guitar|piano` CLI flag (Phase 2)
-- Chord diagrams (Phase 2)
-- Melody tabs / fretboard mapper (Phase 4)
+- PDF export (Phase 7)
+- Accounts/auth (Phase 5)
+- Payment/paywall (Phase 6)
+- `--for guitar|piano` CLI flag (future phase — guitar only for V1)
+- Melody tabs / fretboard mapper (Phase 8)
+- Piano voicings / piano chord diagrams (later phase — guitar is V1 instrument)
 
 ---
 
@@ -78,11 +82,19 @@ users — a significantly larger audience.
 
 ## The Core Product Loop (Keep This In Mind Always)
 
-1. **Upload** — user uploads an audio file (MP3/WAV)
-2. **Generate** — pipeline processes audio, outputs chord chart with timestamps
-3. **Play along** — user presses play, chords highlight in sync with audio playback
+1. **Upload** — user drops in their Suno/Udio MP3 or WAV
+2. **Understand** — key shown with plain-English explanation; 3–5 chords as large finger diagrams; "Your song in 4 chords" is the hero moment
+3. **Play along** — chords highlight in sync with audio; no theory knowledge required to follow
+4. **Learn** — curated JustinGuitar / Marty Music videos mapped to the chords detected in their song
 
-Step 3 is the "aha" moment. Everything else is table stakes to get there.
+Step 3 is the "aha" moment. Step 4 is the retention mechanism.
+
+**The first 15 minutes determine everything.** The product lives or dies on this window.
+
+**Atomic acceptance tests for V1:**
+- User drops in Suno song → in under 10 seconds understands: key, 3–5 chords, where to put fingers for chord 1
+- User presses play → follows highlighted chord names without any theory knowledge → feels like "I'm playing my song"
+- After first play-through, user knows exactly one thing they learned (e.g. "this shape is G")
 
 ---
 
@@ -106,10 +118,10 @@ Do not expand scope beyond what is stated for the session.
 | Capo suggestion | ✅ | When key is guitar-unfriendly |
 | Melody line | 🔄 | Deprioritised — messy from Basic Pitch; may return in Phase 2 |
 | Chord timestamps | ✅ | Required for playback sync |
-| Full piano voicings | ❌ | Never add |
+| Full piano voicings | ❌ | Not in V1 — piano expansion planned for later phase |
 | Bass line | ❌ | Never add |
 | Drum parts | ❌ | Never add |
-| Chord diagrams | Phase 2 | Rendered from chord symbols |
+| Chord diagrams | ✅ | Core to V1 — large, simple finger diagrams for non-musicians. Rendered from chord symbols. |
 | Melody tabs | Phase 4 | Requires fretboard mapper |
 
 ---
@@ -141,9 +153,10 @@ Built in `analysis.py`. Classifies note events into gesture types; rendered diff
 
 ## Hard Rules — Never Do These
 
-- ❌ Do not add drum, bass, or piano voicing output
+- ❌ Do not add drum or bass output
+- ❌ Do not add piano voicings or piano chord diagrams until explicitly instructed (planned for later phase, not V1)
 - ❌ Do not add accounts, auth, or payment logic until Phase 4
-- ❌ Do not add PDF export until Phase 2
+- ❌ Do not add PDF export until Phase 7
 - ❌ Do not install new dependencies without asking first
 - ❌ Do not rename or restructure files without asking
 - ❌ Do not rewrite working modules to "improve" them unless asked
@@ -181,13 +194,20 @@ Exported: chart.xml
 
 ## V1 Success Criteria (Definition of Done)
 
+**Primary metric:** % of new users who complete one full play-through of their own song and engage with at least one chord.
+
 V1 is complete when ALL of these are true:
-1. User can upload an audio file via web UI and receive a chord chart
-2. Chord chart is accurate enough to play along with the song
-3. Audio plays back in browser with chords highlighting in sync
-4. Chord symbols are guitar-playable (no unplayable extensions)
-5. Validated on 5–10 real Suno/Udio audio exports across different genres
-6. Demo video recorded and posted to r/SunoAI and r/Guitar for feedback
+1. User uploads Suno/Udio audio → receives key + chords in under 10 seconds
+2. Chord display is immediately readable by someone who has never played guitar (large diagrams, no jargon)
+3. Audio plays back with chords highlighting in sync — no theory knowledge required
+4. At least one contextual lesson link (JustinGuitar / Marty) surfaced based on detected chords
+5. Validated on 5–10 real Suno/Udio exports across different genres
+6. Demo video posted to r/SunoAI — generates genuine comments, not just upvotes
+
+**Early KPIs:**
+- Activation: % who upload a second song within 7 days
+- Learning: % who answer 1–2 simple in-app chord recognition questions correctly
+- Revenue: conversion to paid after at least one "I'm actually playing" moment
 
 ---
 
@@ -196,12 +216,13 @@ V1 is complete when ALL of these are true:
 | Phase | Focus | Status |
 |---|---|---|
 | 1 | CLI engine. Audio/MIDI in, MusicXML out. Simplification. Arpeggio detection. | ✅ Done |
-| 2 | Web UI shell. FastAPI backend. Upload → chord chart in browser. | 🔄 Active |
+| 2 | Web UI shell. FastAPI backend. Upload → key + chords displayed in browser. Large chord diagrams, plain-English key explanation. | 🔄 Active |
 | 3 | Playback sync. Chords highlight in real time during audio playback. | 🔄 Active |
+| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords and song feel. This is the retention mechanism — do not defer past Phase 3. | 🔄 Active |
 | 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
 | 5 | User accounts + chart storage. Auth. Saved charts dashboard. | Not started |
 | 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
-| 7 | Chord diagrams. PDF export. Formatting polish. | Not started |
+| 7 | PDF export. Formatting polish. | Not started |
 | 8 | Melody tabs (fretboard mapper). Post-validation only. | Not started |
 
 ## Phase 2/3 Rendering Stack (Decided, Not Yet Built)
@@ -216,10 +237,13 @@ V1 is complete when ALL of these are true:
 
 ## Primary User (Keep This in Mind When Making Decisions)
 
-**The AI-curious guitarist**
-- Uses Suno/Udio to generate songs
-- Plays guitar (beginner–intermediate)
-- Not a music theory expert
-- Wants to sit down and play what the AI made
-- Values a tool they can use in one session — upload, get chart, play along
-- Does NOT need: transcription accuracy, stems, MIDI editing, piano voicings
+**The Music-Curious Non-Musician**
+- Uses Suno/Udio to generate songs they genuinely love
+- Has never played guitar (or gave up years ago)
+- Motivated to learn for the first time because it is their song
+- Does not know what a chord progression is
+- Does not know what Chordify is
+- Will churn fast if the first 15 minutes do not deliver a genuine "I'm doing it" moment
+- Does NOT need: transcription accuracy, stems, MIDI editing, complex controls
+
+**Design rule — enforce this always:** If a feature makes a total non-musician feel dumb, it belongs in Phase 2+, not V1.
