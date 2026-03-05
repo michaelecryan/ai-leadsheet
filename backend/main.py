@@ -10,8 +10,15 @@ Run locally:
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+
+from leadsheet import analysis, midi
+from leadsheet import simplify as simplify_mod
+from leadsheet.analysis import suggest_scales
 
 app = FastAPI(title="ai-leadsheet API", version="0.1.0")
 
@@ -24,7 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_ALLOWED_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".mid", ".midi"}
+_AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
+_MIDI_EXTENSIONS = {".mid", ".midi"}
+_ALLOWED_EXTENSIONS = _AUDIO_EXTENSIONS | _MIDI_EXTENSIONS
 
 
 @app.get("/health")
@@ -35,30 +44,76 @@ def health() -> dict:
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)) -> dict:
-    """Accept an audio or MIDI file and return a placeholder chord chart response.
+    """Accept an audio or MIDI file, run the pipeline, and return a chord chart as JSON.
 
-    This endpoint will be wired to the full pipeline in issue #4. For now it
-    validates the file type and returns a stub so the frontend can be built
-    against a real API contract.
+    Response shape:
+      - key: detected key string (e.g. "E minor")
+      - capo: capo fret number or null
+      - capo_hint: human-readable capo instruction or null
+      - scales: list of guitar-friendly scale names
+      - bpm: detected tempo
+      - time_signature: e.g. "4/4"
+      - chords: list of {measure, symbol, time_seconds}
     """
-    suffix = "." + file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    suffix = Path(file.filename).suffix.lower()
     if suffix not in _ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=422,
             detail=f"Unsupported file type '{suffix}'. Accepted: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
         )
 
-    # Placeholder response — real pipeline wired in issue #4
+    # Write upload to a temp file so the pipeline can read it from disk
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(await file.read())
+        tmp_path = Path(tmp.name)
+
+    try:
+        # Run the pipeline — same logic as cli.py
+        if suffix in _AUDIO_EXTENSIONS:
+            from leadsheet import audio as audio_mod  # lazy import (heavy deps)
+            parsed = audio_mod.load_audio(tmp_path)
+        else:
+            parsed = midi.load(tmp_path)
+
+        result = analysis.analyse(parsed)
+        simplified = simplify_mod.simplify(result)
+
+        key = simplified.key
+        scales = suggest_scales(key)
+
+        capo: int | None = simplified.capo if simplified.capo else None
+        capo_hint: str | None = None
+        if capo and simplified.capo_shape_key:
+            capo_hint = f"Capo {capo} and play in {simplified.capo_shape_key} shapes"
+
+        # Convert measure number → seconds so the frontend can drive playback sync
+        beats_per_measure = parsed.beats_per_measure
+        seconds_per_beat = 60.0 / parsed.bpm
+
+        chords = [
+            {
+                "measure": c.measure,
+                "symbol": c.symbol,
+                # Time in seconds when this chord starts in the audio
+                "time_seconds": round((c.measure - 1) * beats_per_measure * seconds_per_beat, 3),
+            }
+            for c in simplified.chords
+        ]
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Pipeline error: {exc}") from exc
+    finally:
+        # Always clean up the temp file
+        tmp_path.unlink(missing_ok=True)
+
     return {
         "status": "ok",
         "filename": file.filename,
-        "key": "E minor",
-        "capo": None,
-        "scales": ["E minor pentatonic", "E natural minor"],
-        "chords": [
-            {"measure": 1, "symbol": "Em"},
-            {"measure": 2, "symbol": "G"},
-            {"measure": 3, "symbol": "D"},
-            {"measure": 4, "symbol": "C"},
-        ],
+        "key": key,
+        "capo": capo,
+        "capo_hint": capo_hint,
+        "scales": scales,
+        "bpm": round(parsed.bpm, 1),
+        "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
+        "chords": chords,
     }
