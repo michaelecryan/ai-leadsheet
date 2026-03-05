@@ -8,11 +8,11 @@ ai-leadsheet is a tool for musicians who generate music with Suno or Udio and wa
 
 Upload an audio file. The app processes it and generates a chord chart in a guitar-friendly key, with simplified, playable chord shapes. Press play and follow the chords in sync as the song plays back — like a karaoke scroll for guitarists.
 
-No more guessing the key or chord chart. No more cleaning up MuseScore output. Just upload, generate, and play.
+No more guessing the key. No more cleaning up MuseScore output. Just upload, generate, and play.
 
 ## Who it's for
 
-- Guitarists using AI music tools (Suno, Udio) who want to play their generated songs fast
+- Guitarists using AI music tools (Suno, Udio) who want to play their generated songs
 - Beginner to intermediate players who don't want to transcribe by ear
 - Anyone who's generated a song and hit the wall of "now what?"
 
@@ -34,12 +34,21 @@ That means:
 
 ## Tech stack
 
-- **Audio processing:** Basic Pitch (Spotify) for pitch/MIDI extraction
+**Current pipeline:**
+- **Audio processing:** Basic Pitch (Spotify) — pitch/MIDI extraction from audio
 - **Music analysis:** music21 — key detection, gesture classification, chord inference
 - **Chord simplification:** custom rules engine
 - **Backend:** Python (FastAPI — in progress)
 - **Frontend:** Web UI (in progress — currently CLI only)
 - **Deployment:** Railway (planned)
+
+**Proposed pipeline (under evaluation in separate branch):**
+
+Demucs (Meta) → Basic Pitch → Essentia chord detection → chart renderer
+
+- **Demucs** — source separation (vocals / bass / drums / other). Cleaner stems = cleaner transcription input.
+- **Basic Pitch** — pitch/MIDI extraction, run on isolated stems rather than full mix
+- **Essentia** — chord detection and melody extraction (`PredominantPitchMelodia`), more targeted than Basic Pitch for dominant melodic line
 
 ## Current status
 
