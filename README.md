@@ -21,8 +21,9 @@ Most songs — even complex-sounding ones — are just 4 chords. ai-leadsheet sh
 ## The core loop
 
 1. **Upload** an audio file (MP3 or WAV from Suno/Udio)
-2. **Generate** — chord chart produced automatically, guitar-optimised
+2. **Understand** — key explained in plain English; 3–5 chords as large finger diagrams
 3. **Play along** — chords highlight in sync with audio playback
+4. **Learn** — contextual JustinGuitar / Marty Music lessons mapped to your chords
 
 ## What makes it different
 
@@ -43,7 +44,8 @@ That means:
 - **Music analysis:** music21 — key detection, gesture classification, chord inference
 - **Chord simplification:** custom rules engine
 - **Backend:** Python (FastAPI — in progress)
-- **Frontend:** Web UI (in progress — currently CLI only)
+- **Frontend:** Web UI (FastAPI + browser renderer — deployed locally, Railway deployment in progress)
+
 - **Deployment:** Railway (planned)
 
 **Proposed pipeline (under evaluation in separate branch):**
@@ -71,6 +73,7 @@ Phase 2 (web UI), Phase 3 (playback sync), and Phase 3b (education layer — con
 | 1 | CLI engine — audio/MIDI in, chord chart out | ✅ Done |
 | 2 | Web UI — upload in browser, chart rendered in browser | 🔄 In progress |
 | 3 | Playback sync — chords highlight in real time | 🔄 In progress |
+| 3b | Education layer — contextual JustinGuitar / Marty lessons | 🔄 In progress |
 | 4 | Chord quality improvements | Planned |
 | 5 | User accounts + saved charts | Planned |
 | 6 | Paid tier (~$5–10/month) | Planned |
