@@ -1,20 +1,22 @@
 # ai-leadsheet
 
-> Upload an AI-generated song. Get a chord chart. Play along.
+> Your AI song as your first music lesson.
 
 ## What it is
 
-ai-leadsheet is a tool for musicians who generate music with Suno or Udio and want to actually *play* what they've made.
+ai-leadsheet is for people who make songs with Suno or Udio — and for the first time in their life, want to understand and play what they've created.
 
-Upload an audio file. The app processes it and generates a chord chart in a guitar-friendly key, with simplified, playable chord shapes. Press play and follow the chords in sync as the song plays back — like a karaoke scroll for guitarists.
+You don't need to play guitar. You don't need to know what a chord is. You just need a song you made and a desire to play it.
 
-No more guessing the key. No more cleaning up MuseScore output. Just upload, generate, and play.
+Upload your Suno or Udio track. The app detects the key (and explains what that means), shows you the 3–5 chords in your song as big, simple finger diagrams, and lets you play along as chords highlight in sync with the audio. Then it points you to the exact JustinGuitar or Marty Music lesson that teaches those chords or relevant concepts depending on your level of understanding.
+
+Most songs — even complex-sounding ones — are just 4 chords. ai-leadsheet shows you that. **Your song in 4 chords** is the moment everything clicks.
 
 ## Who it's for
 
-- Guitarists using AI music tools (Suno, Udio) who want to play their generated songs
-- Beginner to intermediate players who don't want to transcribe by ear
-- Anyone who's generated a song and hit the wall of "now what?"
+- People who use Suno or Udio and want to learn to play their songs on guitar
+- Complete beginners — no musical knowledge needed
+- Anyone who's generated a song and thought "I wonder if I could actually play this"
 
 ## The core loop
 
@@ -24,13 +26,15 @@ No more guessing the key. No more cleaning up MuseScore output. Just upload, gen
 
 ## What makes it different
 
-Most tools optimise for transcription accuracy. This tool optimises for **playability**.
+Most tools are built for people who already play. This tool is built for the moment *before* that — when you've just made something with AI and you're wondering if you could actually learn to play it.
 
 That means:
-- Chord extensions stripped to guitar-playable shapes (Cmaj9 → Cmaj7)
-- Enharmonics normalised to guitar-friendly spellings (Gb → F#)
+- Plain English explanations — no assumed music knowledge
+- Large, simple chord diagrams — not notation, not tabs, just where to put your fingers
+- Chords simplified to what's actually playable (Cmaj9 → Cmaj7, Gb → F#)
 - Capo suggestions when the key doesn't sit well on a fretboard
-- Chord chart output, not full notation — what a musician actually needs
+- Contextual lesson links — the exact JustinGuitar or Marty Music video for your chords
+- Play-along sync — follow the chords in real time as your song plays
 
 ## Tech stack
 
@@ -58,7 +62,7 @@ Phase 1 (CLI engine) is complete and working:
 uv run python -m leadsheet.cli generate song.mid --out chart.xml
 ```
 
-Phase 2 (web UI) and Phase 3 (playback sync) are in active development.
+Phase 2 (web UI), Phase 3 (playback sync), and Phase 3b (education layer — contextual JustinGuitar / Marty Music lessons) are in active development.
 
 ## Roadmap
 
@@ -73,11 +77,12 @@ Phase 2 (web UI) and Phase 3 (playback sync) are in active development.
 
 ## Positioning
 
-Sits in the gap between:
+| Tool | Who it's for |
+|---|---|
+| Chordify | People who already play guitar |
+| Moises | Practicing musicians and producers |
+| Ultimate Guitar | Guitarists learning existing songs |
+| Chord AI | Guitarists learning from any audio |
+| **ai-leadsheet** | **Music-curious non-musicians with an AI song** |
 
-- **MuseScore** — full transcription, not optimised for playability or guitar
-- **Ultimate Guitar** — human-uploaded tabs, no audio processing
-- **Moises** — stem separation and playback, not chart-focused
-- **Chordify** — chord detection but no guitar optimisation or play-along sync
-
-ai-leadsheet is built specifically for the AI-generated audio → guitarist workflow that nobody else has targeted.
+The gap nobody owns: *your AI song as your first structured music lesson.* That's what this is.
