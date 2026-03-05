@@ -237,10 +237,10 @@ Fretboard mapper (pitch → string + fret). Only if user demand signals it post-
 
 1. ~~Do AI music creators want printable charts or just playback?~~ **Answered: playback sync is the core feature. Charts are the means, play-along is the end.**
 2. ~~Is MIDI-first sufficient, or does audio input need to come earlier?~~ **Answered: audio is primary.**
-3. **Desktop-first or mobile-first for V1?** User sitting next to Suno in a browser tab vs. someone on their phone who just generated a track — completely different UX. This decision shapes the entire web shell build. **Needs decision before M1 starts.**
+3. ~~Desktop-first or mobile-first for V1?~~ **Answered: desktop-first for V1. Mobile = URL paste capture layer only. Full experience on desktop, lightweight save-for-later on mobile.**
 4. What is the minimum chord accuracy required for the play-along to feel useful to a non-musician?
 5. Is $5/month or $10/month the right price point for this audience? Non-musicians pay for Fender Play, Yousician — willingness to pay for music education is established.
-6. Which JustinGuitar / Marty Music videos to surface first, and how do we map detected chords to the right lesson?
+6. ~~Which JustinGuitar / Marty Music videos to surface first, and how do we map detected chords to the right lesson?~~ **Answered: static chord-to-lesson lookup table. Curate 20 core beginner chords (Am, G, C, D, E, Em, F, A, Bm etc.), map each to best JustinGuitar + Marty Music video. No live API in V1. YouTube embeds via Data API, read-only, API key only — no OAuth needed.
 
 ---
 
