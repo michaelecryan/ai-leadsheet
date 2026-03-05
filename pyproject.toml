@@ -6,9 +6,12 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "basic-pitch>=0.3.0",
+    "fastapi>=0.128.8",
     "mido>=1.3.3",
     "music21>=8.3.0",
+    "python-multipart>=0.0.20",
     "rich>=14.3.3",
     "setuptools>=82.0.0",
     "typer>=0.23.2",
+    "uvicorn>=0.39.0",
 ]
