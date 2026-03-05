@@ -3,6 +3,8 @@
 > **For Claude:** Read this entire file before writing any code. This is the source of truth.
 > After reading, confirm: what is built, what is in scope for this session, and what is off-limits.
 
+> **End of every session:** Ask Claude Code to update the Current Build State section to reflect what was built. Keep this file current — it is the memory of the project.
+
 ---
 
 ## What This Product Does
@@ -25,10 +27,12 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - Package manager: `uv` (not pip, not poetry)
 - Music library: `music21`
 - Audio transcription: Basic Pitch (Spotify)
-- Run command: `uv run python -m leadsheet.cli generate song.mid --out chart.xml`
-- Output format: MusicXML (`.xml`) — will move to browser rendering in Phase 3
+- Backend: FastAPI
+- Output format: JSON (chord chart) → browser renderer
+- Legacy output: MusicXML (`.xml`) via CLI still supported
 - Entry point: `main.py`
 - Key files: `analysis.py`, `export.py`, `audio.py`, `simplify.py`, `cli.py`
+- Deployment target: Railway
 
 ---
 
@@ -46,12 +50,16 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - Audio transcription (`audio.py`) — Basic Pitch → temp MIDI → pipeline
 - Pitch range filter (`analysis.py`) — strips overtones outside E2–E5 (MIDI 40–76)
 - Arpeggio detection — sequential fingerpicked notes collapse into chord symbol + arpeggio mark
-- Calibrated against "Idea #1 - Acoustic Alternative.mp3": chord progression correct
+- FastAPI backend (`main.py`) — `/health` and `/upload` endpoints, accepts audio/MIDI, returns chord chart JSON
+- Web UI — file upload, key display with plain-English explanation, capo tip, tempo, time sig, scales, chord chart rendered in browser
+- Chord timestamps in pipeline output (`time_seconds` per chord, drives playback sync)
 
 ### 🔄 Active Development
-- Web UI shell (Phase 3 — now prioritised)
+- Audio playback in browser with real-time chord highlighting (playback sync)
+- Large chord diagrams for non-musicians (ChordJS or equivalent)
+- Education layer — contextual JustinGuitar / Marty Music lesson surfacing
 - Chord output quality improvements (Essentia and Demucs evaluation in separate branch)
-- Playback sync (chord highlighting during audio playback — the core "aha" feature)
+- Deployment to public URL (Railway)
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
@@ -60,16 +68,24 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - `--for guitar|piano` CLI flag (future phase — guitar only for V1)
 - Melody tabs / fretboard mapper (Phase 8)
 - Piano voicings / piano chord diagrams (later phase — guitar is V1 instrument)
+- URL paste input for mobile (desktop-first for V1, mobile capture layer later)
+
+---
+
+## Known Issues
+
+- **Processing speed:** Basic Pitch takes 20–30 seconds for a full track. Workaround under evaluation: process first 60 seconds for fast initial result, full track in background.
+- **Progress indicator:** No loading state currently shown during processing. Non-musicians will assume it's broken. Add progress indicator with beginner-friendly copy before public launch.
+- **Chord chart noise:** Full bar-by-bar chart is overwhelming for a non-musician. Need chord summary ("Your song uses 4 main chords: Am, G, F, C") at top before full chart.
+- **Diminished chords:** F#dim, Adim, Bdim appearing in output — simplification should collapse these to nearest playable neighbour for non-musician audience.
 
 ---
 
 ## Input Strategy — Audio is Primary
 
-**Audio is the primary V1 input path.** MIDI is supported and produces cleaner output,
-but requires a paid Suno plan (Pro ~$10/month). Audio export is available to all free-tier
-users — a significantly larger audience.
+**Audio is the primary V1 input path.** MIDI is supported and produces cleaner output, but requires a paid Suno plan (Pro ~$10/month). Audio export is available to all free-tier users — a significantly larger audience.
 
-**Hero flow:** Suno/Udio free user exports MP3 → uploads to web UI → gets a playable chord chart → presses play → follows chords in sync.
+**Hero flow:** Suno/Udio free user exports MP3 → uploads to web UI → gets key + chord diagrams → presses play → follows chords in sync → gets pointed to JustinGuitar lesson.
 
 **Audio quality findings (from testing):**
 - Suno/Udio synthesized audio transcribes well — chord progressions correct, gestures clean
@@ -116,13 +132,13 @@ Do not expand scope beyond what is stated for the session.
 | Time signature | ✅ | Detected from input |
 | Chord simplification | ✅ | Extensions stripped to playable shapes |
 | Capo suggestion | ✅ | When key is guitar-unfriendly |
-| Melody line | 🔄 | Deprioritised — messy from Basic Pitch; may return in Phase 2 |
 | Chord timestamps | ✅ | Required for playback sync |
+| Chord diagrams | ✅ | Core to V1 — large, simple finger diagrams for non-musicians. Rendered from chord symbols. |
+| Melody line | 🔄 | Deprioritised — messy from Basic Pitch; may return in Phase 2 |
 | Full piano voicings | ❌ | Not in V1 — piano expansion planned for later phase |
 | Bass line | ❌ | Never add |
 | Drum parts | ❌ | Never add |
-| Chord diagrams | ✅ | Core to V1 — large, simple finger diagrams for non-musicians. Rendered from chord symbols. |
-| Melody tabs | Phase 4 | Requires fretboard mapper |
+| Melody tabs | Phase 8 | Requires fretboard mapper — only if demand signals it |
 
 ---
 
@@ -135,6 +151,7 @@ Do not expand scope beyond what is stated for the session.
 | Normalize enharmonics | Gb major | F# major |
 | Prefer guitar-friendly keys | Bb major | Suggest capo 1, A shapes |
 | Reduce slash chords | C/E | C |
+| Collapse diminished chords | F#dim | F# or nearest playable neighbour |
 
 ---
 
@@ -151,16 +168,54 @@ Built in `analysis.py`. Classifies note events into gesture types; rendered diff
 
 ---
 
+## Architectural Decisions (Resolved)
+
+### Platform: Desktop-First for V1
+**Decision:** Desktop-first web app for V1. Mobile is a capture layer only.
+
+**Rationale:** The core learning moment — guitar in hand, following chord sync — happens on desktop with a big screen. Mobile is where discovery happens (user generates a Suno track, wants to save it for later).
+
+**V1 implementation:**
+- Desktop: full experience — file upload, chord diagrams, play-along sync, lesson links
+- Mobile: URL paste input only — user pastes their Suno/Udio share link or YouTube URL, chart is saved and waiting on desktop. No full feature parity required in V1.
+
+**File upload vs URL input:**
+- Desktop: file upload (MP3/WAV drag and drop) — natural workflow
+- Mobile: URL paste (Suno share link, Udio link, YouTube URL) — avoids awkward mobile file upload
+
+---
+
+### Education Layer: Curated Lookup Table (Not Live API)
+**Decision:** Build a static chord-to-lesson lookup table for V1. No live YouTube API calls yet.
+
+**Rationale:** Faster to build, more reliable, editorial control over quality. Scale to live API later when lesson library needs to grow.
+
+**V1 implementation:**
+- Curate the 20 most common beginner chords: Am, G, C, D, E, Em, F, A, Bm, Dm, E7, A7, D7, G7, Cadd9, Dsus2, Esus4, Fmaj7, Cmaj7, B7
+- For each chord: best JustinGuitar video + best Marty Music video
+- Detected chords → lookup → surface 2–3 relevant videos in UI
+- YouTube embeds via YouTube Data API (read-only, API key only — no OAuth required)
+
+**Why no OAuth for YouTube:**
+- Surfacing lesson videos = read-only YouTube Data API = API key only, no user login needed
+- OAuth only needed if writing to user's account — not required
+- Suno/Udio are closed ecosystems with no public API — URL paste is the only integration path
+
+**Future:** Swap static lookup for live YouTube API search once chord coverage needs to scale beyond the 20 core chords.
+
+---
+
 ## Hard Rules — Never Do These
 
 - ❌ Do not add drum or bass output
 - ❌ Do not add piano voicings or piano chord diagrams until explicitly instructed (planned for later phase, not V1)
-- ❌ Do not add accounts, auth, or payment logic until Phase 4
+- ❌ Do not add accounts, auth, or payment logic until Phase 5
 - ❌ Do not add PDF export until Phase 7
 - ❌ Do not install new dependencies without asking first
 - ❌ Do not rename or restructure files without asking
 - ❌ Do not rewrite working modules to "improve" them unless asked
 - ❌ Do not expand audio.py without explicit instruction
+- ❌ Do not add features that expose complexity to non-musicians — if it would confuse a first-time user, it belongs in Phase 2+
 
 ---
 
@@ -216,22 +271,25 @@ V1 is complete when ALL of these are true:
 | Phase | Focus | Status |
 |---|---|---|
 | 1 | CLI engine. Audio/MIDI in, MusicXML out. Simplification. Arpeggio detection. | ✅ Done |
-| 2 | Web UI shell. FastAPI backend. Upload → key + chords displayed in browser. Large chord diagrams, plain-English key explanation. | 🔄 Active |
+| 2 | Web UI shell. FastAPI backend. Upload → key + chords displayed in browser. Large chord diagrams, plain-English key explanation. | ✅ Done |
 | 3 | Playback sync. Chords highlight in real time during audio playback. | 🔄 Active |
-| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords and song feel. This is the retention mechanism — do not defer past Phase 3. | 🔄 Active |
+| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. Retention mechanism — do not defer past Phase 3. | 🔄 Active |
 | 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
 | 5 | User accounts + chart storage. Auth. Saved charts dashboard. | Not started |
 | 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
 | 7 | PDF export. Formatting polish. | Not started |
 | 8 | Melody tabs (fretboard mapper). Post-validation only. | Not started |
 
-## Phase 2/3 Rendering Stack (Decided, Not Yet Built)
+---
 
-- **Standard notation / chord chart** — rendered client-side from MusicXML using **alphaTab** (guitar-native JS renderer)
-- **Chord diagrams** — rendered from chord symbol strings (e.g. "Am", "G7") using ChordJS or similar
+## Phase 3 Rendering Stack (Decided, Partially Built)
+
+- **Chord chart** — rendered in browser from JSON output (bar-by-bar chord symbols)
+- **Key display** — plain-English explanation + capo tip already rendering
+- **Chord diagrams** — to be rendered from chord symbol strings using ChordJS or equivalent
 - **Playback sync** — Web Audio API reads playback position, highlights current chord block based on timestamps from pipeline output
-- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; alphaTab renders in browser. Server stays pure Python.
-- **Melody tabs** — deferred. Requires fretboard mapper. Add post-V1 once there's user demand signal.
+- **Web architecture** — FastAPI (Python) on Railway handles the pipeline; browser renderer handles display. Server stays pure Python.
+- **Melody tabs** — deferred. Requires fretboard mapper. Add post-V1 only if user demand signals it.
 
 ---
 
