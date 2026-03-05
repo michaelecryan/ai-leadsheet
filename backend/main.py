@@ -16,6 +16,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from leadsheet import analysis, midi
 from leadsheet import simplify as simplify_mod
@@ -119,6 +120,10 @@ async def upload(file: UploadFile = File(...)) -> dict:
         "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
         "chords": chords,
     }
+
+
+# Serve the frontend — must be mounted after all API routes so they are not shadowed.
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 
 def _run_pipeline(tmp_path: Path, suffix: str) -> tuple[ParsedMidi, object]:
