@@ -93,6 +93,12 @@ def _simplify_chord(symbol: str) -> str:
         if semitone is not None:
             symbol = _SEMITONE_TO_NAME[semitone] + symbol[2:]
 
+    # Collapse diminished chords to nearest playable neighbour (dim → minor)
+    if "dim7" in symbol:
+        return symbol.replace("dim7", "m7")
+    if "dim" in symbol:
+        return symbol.replace("dim", "m")
+
     # Unknown quality (our fallback wraps in parens) → strip to triad
     if "(" in symbol:
         return symbol.split("(")[0]
