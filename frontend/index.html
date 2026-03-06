@@ -599,7 +599,7 @@
 
     /** Render lesson cards for the top chords that have lookup entries. */
     function renderLessons(topChords) {
-      const section = document.getElementById("lessons-section");
+      const section = lessonsSection;
       const container = document.getElementById("lesson-cards");
       const chords = topChords.filter(sym => LESSON_LOOKUP[sym]).slice(0, 4);
       if (chords.length === 0) { section.style.display = "none"; return; }
@@ -629,8 +629,9 @@
     const tryAgain    = document.getElementById("try-again");
 
     // Player refs
-    const playerSection = document.getElementById("player-section");
-    const audioEl       = document.getElementById("audio-el");
+    const playerSection  = document.getElementById("player-section");
+    const lessonsSection = document.getElementById("lessons-section");
+    const audioEl        = document.getElementById("audio-el");
     const playBtn       = document.getElementById("play-btn");
     const progressBar   = document.getElementById("progress-bar");
     const timeCurrent   = document.getElementById("time-current");
@@ -882,7 +883,7 @@
       result.style.display       = "none";
       tryAgain.style.display     = "none";
       playerSection.style.display = "none";
-      document.getElementById("lessons-section").style.display = "none";
+      lessonsSection.style.display = "none";
       // Stop audio and clean up
       audioEl.pause();
       audioEl.currentTime = 0;
