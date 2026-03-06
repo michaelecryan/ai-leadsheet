@@ -57,9 +57,12 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - Bar-by-bar chord grid — full progression below hero section
 - Chord timestamps in pipeline output (`time_seconds` per chord, wired up ready for playback sync)
 - Railway deployment config — `Procfile` + `railway.toml` committed; app binds to `0.0.0.0:$PORT`, healthcheck at `/health`
+- Railway deployed and live at `ai-leadsheet-production.up.railway.app` — requires `NIXPACKS_PYTHON_VERSION=3.11` env var in Railway dashboard
+- ONNX runtime backend (`onnxruntime`) — replaces TFLite for cross-platform Basic Pitch inference on Railway (Linux x86_64)
+- Python 3.11 (upgraded from 3.9 for onnxruntime compatibility)
+- Diminished chord simplification (`simplify.py`) — `dim` → minor, `dim7` → `m7`
 
 ### 🔄 Active Development
-- Railway deployment — config pushed, deploy deferred (Railway dashboard outage during session; resume next session)
 - Audio playback in browser with real-time chord highlighting (Phase 3 — playback sync)
 - Education layer — contextual JustinGuitar / Marty Music lesson surfacing (Phase 3b)
 - Chord output quality improvements (Essentia and Demucs evaluation in separate branch — Phase 4)
@@ -80,7 +83,7 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - **Processing speed:** Basic Pitch takes 20–30 seconds for a full track. Workaround under evaluation: process first 60 seconds for fast initial result, full track in background.
 - **Progress indicator:** ~~No loading state.~~ Resolved in Issue #6 — loading copy now reads "Transcribing your track… This usually takes 20–40 seconds. Hold tight."
 - **Chord chart noise:** ~~Full bar-by-bar chart is overwhelming.~~ Resolved in Issue #6 — hero section now shows top 6 chords by frequency; bar chart is secondary.
-- **Diminished chords:** F#dim, Adim, Bdim appearing in output — simplification should collapse these to nearest playable neighbour for non-musician audience.
+- **Diminished chords:** ~~F#dim, Adim, Bdim appearing in output.~~ Resolved — `simplify.py` now collapses `dim` → minor, `dim7` → `m7`.
 
 ---
 
