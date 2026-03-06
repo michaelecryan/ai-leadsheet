@@ -18,6 +18,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from leadsheet import analysis, midi
 from leadsheet import simplify as simplify_mod
@@ -34,6 +35,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class UrlRequest(BaseModel):
+    """Request body for URL-based audio ingestion."""
+    url: str
+
 
 _AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
 _MIDI_EXTENSIONS = {".mid", ".midi"}
@@ -113,6 +119,79 @@ async def upload(file: UploadFile = File(...)) -> dict:
     return {
         "status": "ok",
         "filename": file.filename,
+        "key": key,
+        "capo": capo,
+        "capo_hint": capo_hint,
+        "scales": scales,
+        "bpm": round(parsed.bpm, 1),
+        "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
+        "chords": chords,
+    }
+
+
+@app.post("/upload-url")
+async def upload_url(req: UrlRequest) -> dict:
+    """Download audio from a YouTube URL, run the pipeline, and return a chord chart.
+
+    Uses yt-dlp to fetch the best available audio stream, converts to MP3, then
+    passes through the same librosa pipeline as a file upload. Returns the same
+    JSON shape as /upload, plus video_id and title for the frontend YouTube embed.
+    """
+    import yt_dlp
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ydl_opts = {
+                # Prefer m4a (no ffmpeg needed); fall back to any audio
+                "format": "bestaudio[ext=m4a]/bestaudio/best",
+                "outtmpl": str(Path(tmp_dir) / "%(id)s.%(ext)s"),
+                "quiet": True,
+                "no_warnings": True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(req.url, download=True)
+
+            video_id = info.get("id", "")
+            title = info.get("title", "YouTube track")
+
+            # Find whichever audio file yt-dlp downloaded
+            audio_files = [
+                f for f in Path(tmp_dir).iterdir()
+                if f.suffix.lower() in _AUDIO_EXTENSIONS
+            ]
+            if not audio_files:
+                raise ValueError("No supported audio file found after download")
+            audio_path = audio_files[0]
+            suffix = audio_path.suffix.lower()
+
+            parsed, simplified = await asyncio.to_thread(_run_pipeline, audio_path, suffix)
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Download error: {exc}") from exc
+
+    key = simplified.key
+    scales = suggest_scales(key)
+    capo = simplified.capo
+    capo_hint: str | None = None
+    if capo and simplified.capo_shape_key:
+        capo_hint = f"Capo {capo} and play in {simplified.capo_shape_key} shapes"
+    beats_per_measure = parsed.beats_per_measure
+    seconds_per_beat = 60.0 / parsed.bpm
+    chords = [
+        {
+            "measure": c.measure,
+            "symbol": c.symbol,
+            "time_seconds": round((c.measure - 1) * beats_per_measure * seconds_per_beat, 3),
+        }
+        for c in simplified.chords
+    ]
+    return {
+        "status": "ok",
+        "filename": title,
+        "video_id": video_id,
+        "title": title,
         "key": key,
         "capo": capo,
         "capo_hint": capo_hint,

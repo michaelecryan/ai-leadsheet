@@ -367,13 +367,102 @@
     }
 
     #try-again:hover { border-color: #555; color: #ccc; }
+
+    /* ── Input tabs (Upload file / YouTube URL) ── */
+    .input-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .input-tab {
+      background: none;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      color: #666;
+      font-size: 0.82rem;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .input-tab.active {
+      border-color: #6c63ff;
+      color: #ccc;
+    }
+
+    /* ── URL input form ── */
+    #url-form {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    #url-input {
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 10px;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      padding: 12px 16px;
+      width: 100%;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #url-input:focus { border-color: #6c63ff; }
+    #url-input::placeholder { color: #444; }
+
+    #url-submit {
+      background: #6c63ff;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #url-submit:hover { background: #5a52d5; }
+
+    /* ── YouTube player section ── */
+    #yt-section {
+      display: none;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+
+    #yt-player {
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      background: #000;
+    }
+
+    #yt-player iframe {
+      width: 100% !important;
+      height: 100% !important;
+    }
   </style>
 </head>
+<script src="https://www.youtube.com/iframe_api"></script>
 <body>
   <header>
     <h1>ai-leadsheet</h1>
     <p>Drop in your Suno or Udio track. Get the chords.</p>
   </header>
+
+  <div class="input-tabs">
+    <button class="input-tab active" id="tab-file">Upload file</button>
+    <button class="input-tab" id="tab-url">YouTube URL</button>
+  </div>
 
   <div id="drop-zone" role="button" tabindex="0" aria-label="Upload audio file">
     <div class="icon">🎵</div>
@@ -381,6 +470,11 @@
     <p>or click to choose a file</p>
     <p class="file-hint">MP3 · WAV · FLAC · OGG · M4A · MIDI</p>
     <input type="file" id="file-input" accept=".mp3,.wav,.flac,.ogg,.m4a,.mid,.midi" />
+  </div>
+
+  <div id="url-form">
+    <input type="text" id="url-input" placeholder="https://youtube.com/watch?v=…" />
+    <button id="url-submit">Analyze</button>
   </div>
 
   <div id="loading">
@@ -424,6 +518,11 @@
         </div>
       </div>
       <audio id="audio-el" preload="auto"></audio>
+    </div>
+
+    <!-- YouTube player (URL submissions) -->
+    <div id="yt-section" class="result-section">
+      <div id="yt-player"></div>
     </div>
 
     <!-- Education layer — learn these chords -->
@@ -631,6 +730,7 @@
     // Player refs
     const playerSection  = document.getElementById("player-section");
     const lessonsSection = document.getElementById("lessons-section");
+    const ytSection      = document.getElementById("yt-section");
     const audioEl        = document.getElementById("audio-el");
     const playBtn       = document.getElementById("play-btn");
     const progressBar   = document.getElementById("progress-bar");
@@ -642,6 +742,14 @@
     let chordTimings   = [];     // [{measure, symbol, time_seconds}, …] from API
     let activeChordIdx = -1;     // Index into chordTimings of the currently highlighted chord
     const MIDI_EXTS    = new Set([".mid", ".midi"]);
+
+    // YouTube IFrame state
+    let ytPlayer       = null;   // YT.Player instance
+    let ytPollInterval = null;   // setInterval handle for getCurrentTime polling
+
+    // Required global — YouTube IFrame API calls this when ready.
+    // We create the player lazily in setupYouTubePlayer() so this is a no-op.
+    window.onYouTubeIframeAPIReady = function() {};
 
     // ── Drop zone interactions ───────────────────────────────────────────────
     dropZone.addEventListener("click",   () => fileInput.click());
@@ -657,6 +765,30 @@
     fileInput.addEventListener("change", () => { if (fileInput.files[0]) upload(fileInput.files[0]); });
     tryAgain.addEventListener("click", reset);
 
+    // ── Input tab toggle ─────────────────────────────────────────────────────
+    document.getElementById("tab-file").addEventListener("click", () => {
+      document.getElementById("tab-file").classList.add("active");
+      document.getElementById("tab-url").classList.remove("active");
+      dropZone.style.display = "flex";
+      document.getElementById("url-form").style.display = "none";
+    });
+    document.getElementById("tab-url").addEventListener("click", () => {
+      document.getElementById("tab-url").classList.add("active");
+      document.getElementById("tab-file").classList.remove("active");
+      dropZone.style.display = "none";
+      document.getElementById("url-form").style.display = "flex";
+    });
+    document.getElementById("url-submit").addEventListener("click", () => {
+      const url = document.getElementById("url-input").value.trim();
+      if (url) uploadUrl(url);
+    });
+    document.getElementById("url-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        const url = e.target.value.trim();
+        if (url) uploadUrl(url);
+      }
+    });
+
     // ── Upload ───────────────────────────────────────────────────────────────
     async function upload(file) {
       showLoading();
@@ -670,6 +802,53 @@
       } catch {
         showError("Could not reach the server. Is the backend running?");
       }
+    }
+
+    async function uploadUrl(url) {
+      showLoading();
+      try {
+        const res  = await fetch("/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.detail || `Server error ${res.status}`); return; }
+        showResult(data, null);  // null file — YouTube mode, no audio blob
+      } catch {
+        showError("Could not reach the server. Is the backend running?");
+      }
+    }
+
+    // ── YouTube player ────────────────────────────────────────────────────────
+    function setupYouTubePlayer(videoId) {
+      clearYouTubePlayer();
+      document.getElementById("yt-player").innerHTML = "";
+      ytPlayer = new YT.Player("yt-player", {
+        videoId,
+        playerVars: { origin: window.location.origin },
+        events: { onStateChange: onYtStateChange },
+      });
+    }
+
+    function onYtStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        clearInterval(ytPollInterval);
+        ytPollInterval = setInterval(() => {
+          highlightChordAt(ytPlayer.getCurrentTime());
+        }, 200);
+      } else {
+        clearInterval(ytPollInterval);
+        ytPollInterval = null;
+        if (event.data === YT.PlayerState.ENDED) clearChordHighlight();
+      }
+    }
+
+    function clearYouTubePlayer() {
+      clearInterval(ytPollInterval);
+      ytPollInterval = null;
+      if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+      activeChordIdx = -1;
     }
 
     // ── Render result ────────────────────────────────────────────────────────
@@ -711,14 +890,26 @@
         </div>`;
       }).join("");
 
-      // Audio player — only for audio files (not MIDI)
+      // Player — audio file or YouTube embed
       chordTimings = data.chords;
-      const ext = "." + file.name.split(".").pop().toLowerCase();
-      if (!MIDI_EXTS.has(ext)) {
-        setupPlayer(file);
-        playerSection.style.display = "block";
+      if (data.video_id) {
+        // YouTube mode: embed IFrame player, drive chord sync via polling
+        playerSection.style.display = "none";
+        setupYouTubePlayer(data.video_id);
+        ytSection.style.display = "block";
+      } else if (file) {
+        // File upload mode: audio element + blob URL
+        ytSection.style.display = "none";
+        const ext = "." + file.name.split(".").pop().toLowerCase();
+        if (!MIDI_EXTS.has(ext)) {
+          setupPlayer(file);
+          playerSection.style.display = "block";
+        } else {
+          playerSection.style.display = "none";
+        }
       } else {
         playerSection.style.display = "none";
+        ytSection.style.display = "none";
       }
 
       // BPM + time signature
@@ -866,6 +1057,7 @@
     function showLoading() {
       hideAll();
       dropZone.style.display = "none";
+      document.getElementById("url-form").style.display = "none";
       loading.style.display  = "flex";
     }
 
@@ -878,15 +1070,17 @@
     }
 
     function hideAll() {
-      loading.style.display      = "none";
-      errorBox.style.display     = "none";
-      result.style.display       = "none";
-      tryAgain.style.display     = "none";
-      playerSection.style.display = "none";
+      loading.style.display        = "none";
+      errorBox.style.display       = "none";
+      result.style.display         = "none";
+      tryAgain.style.display       = "none";
+      playerSection.style.display  = "none";
+      ytSection.style.display      = "none";
       lessonsSection.style.display = "none";
       // Stop audio and clean up
       audioEl.pause();
       audioEl.currentTime = 0;
+      clearYouTubePlayer();
       clearChordHighlight();
     }
 
@@ -894,7 +1088,11 @@
       hideAll();
       if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       dropZone.style.display = "block";
-      fileInput.value        = "";
+      document.getElementById("url-form").style.display = "none";
+      document.getElementById("tab-file").classList.add("active");
+      document.getElementById("tab-url").classList.remove("active");
+      fileInput.value = "";
+      document.getElementById("url-input").value = "";
     }
   </script>
 </body>
