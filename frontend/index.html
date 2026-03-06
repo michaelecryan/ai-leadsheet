@@ -189,6 +189,9 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
+      max-height: 360px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
     }
 
     .chord-card {
@@ -200,6 +203,102 @@
 
     .chord-card .measure-num  { font-size: 0.6rem; color: #3a3a3a; margin-bottom: 4px; }
     .chord-card .chord-symbol { font-size: 1.1rem; font-weight: 700; }
+
+    /* ── Audio player ── */
+    #player-section {
+      display: none;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+
+    .player-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    #play-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 50%;
+      background: #6c63ff;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    #play-btn:hover { background: #5a52e0; }
+
+    .progress-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    #progress-bar {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #2a2a2a;
+      border-radius: 3px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    #progress-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6c63ff;
+      cursor: pointer;
+    }
+
+    #progress-bar::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6c63ff;
+      border: none;
+      cursor: pointer;
+    }
+
+    #progress-bar::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 3px;
+    }
+
+    .time-display {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: #555;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Active chord highlighting ── */
+    .chord-card.active {
+      background: rgba(108, 99, 255, 0.2);
+      border: 1px solid rgba(108, 99, 255, 0.4);
+    }
+
+    .hero-chord.active {
+      border-color: #6c63ff;
+      box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.3);
+    }
 
     /* ── Try again ── */
     #try-again {
@@ -258,6 +357,21 @@
     <div id="hero-section" class="result-section">
       <div class="hero-heading" id="hero-heading"></div>
       <div id="hero-grid"></div>
+    </div>
+
+    <!-- Audio player -->
+    <div id="player-section" class="result-section">
+      <div class="player-bar">
+        <button id="play-btn" aria-label="Play">&#9654;</button>
+        <div class="progress-wrap">
+          <input type="range" id="progress-bar" min="0" max="100" value="0" step="0.1" />
+          <div class="time-display">
+            <span id="time-current">0:00</span>
+            <span id="time-total">0:00</span>
+          </div>
+        </div>
+      </div>
+      <audio id="audio-el" preload="auto"></audio>
     </div>
 
     <div class="result-section">
@@ -408,6 +522,20 @@
     const result      = document.getElementById("result");
     const tryAgain    = document.getElementById("try-again");
 
+    // Player refs
+    const playerSection = document.getElementById("player-section");
+    const audioEl       = document.getElementById("audio-el");
+    const playBtn       = document.getElementById("play-btn");
+    const progressBar   = document.getElementById("progress-bar");
+    const timeCurrent   = document.getElementById("time-current");
+    const timeTotal     = document.getElementById("time-total");
+
+    // Playback state
+    let currentBlobUrl = null;   // Object URL for the uploaded file
+    let chordTimings   = [];     // [{measure, symbol, time_seconds}, …] from API
+    let activeChordIdx = -1;     // Index into chordTimings of the currently highlighted chord
+    const MIDI_EXTS    = new Set([".mid", ".midi"]);
+
     // ── Drop zone interactions ───────────────────────────────────────────────
     dropZone.addEventListener("click",   () => fileInput.click());
     dropZone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
@@ -431,14 +559,14 @@
         const res  = await fetch("/upload", { method: "POST", body: formData });
         const data = await res.json();
         if (!res.ok) { showError(data.detail || `Server error ${res.status}`); return; }
-        showResult(data);
+        showResult(data, file);
       } catch {
         showError("Could not reach the server. Is the backend running?");
       }
     }
 
     // ── Render result ────────────────────────────────────────────────────────
-    function showResult(data) {
+    function showResult(data, file) {
       hideAll();
 
       // Key
@@ -448,7 +576,7 @@
       // Capo
       const capoSection = document.getElementById("capo-section");
       if (data.capo_hint) {
-        document.getElementById("capo-banner").textContent = "🎸 Tip: " + data.capo_hint;
+        document.getElementById("capo-banner").textContent = "\uD83C\uDFB8 Tip: " + data.capo_hint;
         capoSection.style.display = "";
       } else {
         capoSection.style.display = "none";
@@ -468,13 +596,23 @@
 
       document.getElementById("hero-grid").innerHTML = topChords.map(sym => {
         const svg = buildChordSvg(sym);
-        return `<div class="hero-chord">
+        return `<div class="hero-chord" data-chord="${sym}">
           <div class="hero-chord-name">${sym}</div>
           <div class="hero-chord-diagram">
-            ${svg || '<div class="hero-chord-no-diagram">–</div>'}
+            ${svg || '<div class="hero-chord-no-diagram">\u2013</div>'}
           </div>
         </div>`;
       }).join("");
+
+      // Audio player — only for audio files (not MIDI)
+      chordTimings = data.chords;
+      const ext = "." + file.name.split(".").pop().toLowerCase();
+      if (!MIDI_EXTS.has(ext)) {
+        setupPlayer(file);
+        playerSection.style.display = "block";
+      } else {
+        playerSection.style.display = "none";
+      }
 
       // BPM + time signature
       const metaRow = document.getElementById("meta-row");
@@ -493,8 +631,8 @@
       }
 
       // Bar-by-bar chord chart
-      document.getElementById("chord-grid").innerHTML = data.chords.map(c =>
-        `<div class="chord-card">
+      document.getElementById("chord-grid").innerHTML = data.chords.map((c, i) =>
+        `<div class="chord-card" data-chord-idx="${i}">
           <div class="measure-num">Bar ${c.measure}</div>
           <div class="chord-symbol">${c.symbol}</div>
         </div>`
@@ -504,10 +642,106 @@
       tryAgain.style.display = "inline-block";
     }
 
+    // ── Audio player ─────────────────────────────────────────────────────────
+    function setupPlayer(file) {
+      // Revoke previous blob URL if any
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = URL.createObjectURL(file);
+      audioEl.src = currentBlobUrl;
+      activeChordIdx = -1;
+
+      // Reset UI
+      playBtn.innerHTML = "&#9654;";
+      progressBar.value = 0;
+      timeCurrent.textContent = "0:00";
+      timeTotal.textContent = "0:00";
+    }
+
+    // Play / pause
+    playBtn.addEventListener("click", () => {
+      if (audioEl.paused) {
+        audioEl.play();
+        playBtn.innerHTML = "&#10074;&#10074;";
+      } else {
+        audioEl.pause();
+        playBtn.innerHTML = "&#9654;";
+      }
+    });
+
+    // Duration available
+    audioEl.addEventListener("loadedmetadata", () => {
+      timeTotal.textContent = fmtTime(audioEl.duration);
+      progressBar.max = audioEl.duration;
+    });
+
+    // Progress update — drives chord highlighting
+    audioEl.addEventListener("timeupdate", () => {
+      const t = audioEl.currentTime;
+      timeCurrent.textContent = fmtTime(t);
+      progressBar.value = t;
+      highlightChordAt(t);
+    });
+
+    // Seek via progress bar
+    progressBar.addEventListener("input", () => {
+      audioEl.currentTime = Number(progressBar.value);
+    });
+
+    // Reset when track ends
+    audioEl.addEventListener("ended", () => {
+      playBtn.innerHTML = "&#9654;";
+      clearChordHighlight();
+    });
+
+    function fmtTime(secs) {
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return m + ":" + String(s).padStart(2, "0");
+    }
+
+    // ── Chord highlighting ───────────────────────────────────────────────────
+    function highlightChordAt(currentTime) {
+      // Find the last chord whose time_seconds <= currentTime
+      let idx = -1;
+      for (let i = chordTimings.length - 1; i >= 0; i--) {
+        if (chordTimings[i].time_seconds <= currentTime) {
+          idx = i;
+          break;
+        }
+      }
+
+      if (idx === activeChordIdx) return; // no change
+      activeChordIdx = idx;
+
+      // Clear all highlights
+      clearChordHighlight();
+
+      if (idx < 0) return;
+
+      // Highlight bar-by-bar card
+      const card = document.querySelector(`.chord-card[data-chord-idx="${idx}"]`);
+      if (card) {
+        card.classList.add("active");
+        // Auto-scroll: keep active card visible in the chord grid
+        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      // Highlight matching hero chord
+      const sym = chordTimings[idx].symbol;
+      const heroCard = document.querySelector(`.hero-chord[data-chord="${sym}"]`);
+      if (heroCard) heroCard.classList.add("active");
+    }
+
+    function clearChordHighlight() {
+      document.querySelectorAll(".chord-card.active").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".hero-chord.active").forEach(el => el.classList.remove("active"));
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
     function plainEnglishKey(key) {
       const lower = key.toLowerCase();
-      if (lower.includes("minor")) return `The key of ${key} — gives your song a darker, more emotional feel.`;
-      if (lower.includes("major")) return `The key of ${key} — bright and clear sound.`;
+      if (lower.includes("minor")) return `The key of ${key} \u2014 gives your song a darker, more emotional feel.`;
+      if (lower.includes("major")) return `The key of ${key} \u2014 bright and clear sound.`;
       return `The key of ${key}`;
     }
 
@@ -534,14 +768,20 @@
     }
 
     function hideAll() {
-      loading.style.display  = "none";
-      errorBox.style.display = "none";
-      result.style.display   = "none";
-      tryAgain.style.display = "none";
+      loading.style.display      = "none";
+      errorBox.style.display     = "none";
+      result.style.display       = "none";
+      tryAgain.style.display     = "none";
+      playerSection.style.display = "none";
+      // Stop audio and clean up
+      audioEl.pause();
+      audioEl.currentTime = 0;
+      clearChordHighlight();
     }
 
     function reset() {
       hideAll();
+      if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       dropZone.style.display = "block";
       fileInput.value        = "";
     }
