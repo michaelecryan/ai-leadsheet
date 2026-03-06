@@ -11,6 +11,7 @@ Run locally:
 from __future__ import annotations
 
 import asyncio
+import os
 import tempfile
 from pathlib import Path
 
@@ -131,13 +132,22 @@ def _run_pipeline(tmp_path: Path, suffix: str) -> tuple[ParsedMidi, object]:
 
     Runs synchronously — call via asyncio.to_thread() from async endpoints
     so the event loop is not blocked during CPU-heavy transcription.
+
+    Set CHORD_DETECTOR=librosa to use the beat-synchronous chromagram path
+    (Phase 4 evaluation) instead of Basic Pitch. Defaults to Basic Pitch.
     """
-    if suffix in _AUDIO_EXTENSIONS:
+    if suffix in _AUDIO_EXTENSIONS and os.getenv("CHORD_DETECTOR") == "librosa":
+        # Phase 4 path: beat-synchronous chromagram chord detection via librosa.
+        # Bypasses Basic Pitch entirely — faster and better for chord recognition.
+        from leadsheet.chord_detector import detect_chords_librosa
+        parsed, result = detect_chords_librosa(tmp_path)
+    elif suffix in _AUDIO_EXTENSIONS:
         from leadsheet import audio as audio_mod  # lazy import (heavy deps)
         parsed = audio_mod.load_audio(tmp_path)
+        result = analysis.analyse(parsed)
     else:
         parsed = midi.load(tmp_path)
+        result = analysis.analyse(parsed)
 
-    result = analysis.analyse(parsed)
     simplified = simplify_mod.simplify(result)
     return parsed, simplified
