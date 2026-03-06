@@ -300,6 +300,58 @@
       box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.3);
     }
 
+    /* ── Education layer — lesson cards ── */
+    #lessons-section {
+      display: none;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+
+    .lesson-cards {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .lesson-cards::-webkit-scrollbar { display: none; }
+
+    .lesson-card {
+      flex-shrink: 0;
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 12px;
+      padding: 14px 18px;
+      min-width: 200px;
+    }
+
+    .lesson-card-chord {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .lesson-provider {
+      font-size: 0.7rem;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .lesson-link {
+      display: inline-block;
+      font-size: 0.82rem;
+      color: #6c63ff;
+      text-decoration: none;
+      margin-bottom: 12px;
+    }
+    .lesson-link:hover { text-decoration: underline; }
+
+    .lesson-link:last-child { margin-bottom: 0; }
+
     /* ── Try again ── */
     #try-again {
       display: none;
@@ -372,6 +424,12 @@
         </div>
       </div>
       <audio id="audio-el" preload="auto"></audio>
+    </div>
+
+    <!-- Education layer — learn these chords -->
+    <div id="lessons-section" class="result-section">
+      <div class="result-label">Learn these chords</div>
+      <div class="lesson-cards" id="lesson-cards"></div>
     </div>
 
     <div class="result-section">
@@ -513,6 +571,54 @@
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" aria-label="${symbol} chord diagram">${els.join("")}</svg>`;
     }
 
+    // ── Lesson lookup — chord → {jg: JustinGuitar URL, marty: Marty Music search query} ──
+    // JustinGuitar URLs: chord library pages at justinguitar.com/chords/{slug}
+    // Marty Music: YouTube search links (no video ID needed, always fresh)
+    const LESSON_LOOKUP = {
+      "Am":    { jg: "https://www.justinguitar.com/chords/amin",     marty: "marty+music+how+to+play+Am+chord+guitar" },
+      "G":     { jg: "https://www.justinguitar.com/chords/g",        marty: "marty+music+how+to+play+G+chord+guitar" },
+      "C":     { jg: "https://www.justinguitar.com/chords/c",        marty: "marty+music+how+to+play+C+chord+guitar" },
+      "D":     { jg: "https://www.justinguitar.com/chords/d",        marty: "marty+music+how+to+play+D+chord+guitar" },
+      "E":     { jg: "https://www.justinguitar.com/chords/e",        marty: "marty+music+how+to+play+E+chord+guitar" },
+      "Em":    { jg: "https://www.justinguitar.com/chords/em",       marty: "marty+music+how+to+play+Em+chord+guitar" },
+      "F":     { jg: "https://www.justinguitar.com/chords/f",        marty: "marty+music+how+to+play+F+chord+guitar" },
+      "A":     { jg: "https://www.justinguitar.com/chords/a",        marty: "marty+music+how+to+play+A+chord+guitar" },
+      "Bm":    { jg: "https://www.justinguitar.com/chords/bm",       marty: "marty+music+how+to+play+Bm+chord+guitar" },
+      "Dm":    { jg: "https://www.justinguitar.com/chords/dm",       marty: "marty+music+how+to+play+Dm+chord+guitar" },
+      "E7":    { jg: "https://www.justinguitar.com/chords/e7",       marty: "marty+music+how+to+play+E7+chord+guitar" },
+      "A7":    { jg: "https://www.justinguitar.com/chords/a7",       marty: "marty+music+how+to+play+A7+chord+guitar" },
+      "D7":    { jg: "https://www.justinguitar.com/chords/d7",       marty: "marty+music+how+to+play+D7+chord+guitar" },
+      "G7":    { jg: "https://www.justinguitar.com/chords/g7",       marty: "marty+music+how+to+play+G7+chord+guitar" },
+      "Cadd9": { jg: "https://www.justinguitar.com/chords/c-add9-1", marty: "marty+music+how+to+play+Cadd9+chord+guitar" },
+      "Dsus2": { jg: "https://www.justinguitar.com/chords/dsus2",    marty: "marty+music+how+to+play+Dsus2+chord+guitar" },
+      "Esus4": { jg: "https://www.justinguitar.com/chords/esus4",    marty: "marty+music+how+to+play+Esus4+chord+guitar" },
+      "Fmaj7": { jg: "https://www.justinguitar.com/chords/fmaj7",    marty: "marty+music+how+to+play+Fmaj7+chord+guitar" },
+      "Cmaj7": { jg: "https://www.justinguitar.com/chords/cmaj7",    marty: "marty+music+how+to+play+Cmaj7+chord+guitar" },
+      "B7":    { jg: "https://www.justinguitar.com/chords/b7",       marty: "marty+music+how+to+play+B7+chord+guitar" },
+    };
+
+    /** Render lesson cards for the top chords that have lookup entries. */
+    function renderLessons(topChords) {
+      const section = document.getElementById("lessons-section");
+      const container = document.getElementById("lesson-cards");
+      const chords = topChords.filter(sym => LESSON_LOOKUP[sym]).slice(0, 4);
+      if (chords.length === 0) { section.style.display = "none"; return; }
+
+      container.innerHTML = chords.map(sym => {
+        const { jg, marty } = LESSON_LOOKUP[sym];
+        const martyUrl = `https://www.youtube.com/results?search_query=${marty}`;
+        return `<div class="lesson-card">
+          <div class="lesson-card-chord">${sym} chord</div>
+          <div class="lesson-provider">JustinGuitar</div>
+          <a class="lesson-link" href="${jg}" target="_blank" rel="noopener">Watch lesson &rarr;</a>
+          <div class="lesson-provider">Marty Music</div>
+          <a class="lesson-link" href="${martyUrl}" target="_blank" rel="noopener">Watch lesson &rarr;</a>
+        </div>`;
+      }).join("");
+
+      section.style.display = "block";
+    }
+
     // ── DOM refs ─────────────────────────────────────────────────────────────
     const dropZone    = document.getElementById("drop-zone");
     const fileInput   = document.getElementById("file-input");
@@ -637,6 +743,9 @@
           <div class="chord-symbol">${c.symbol}</div>
         </div>`
       ).join("");
+
+      // Education layer — lesson cards for top chords
+      renderLessons(topChords);
 
       result.style.display  = "block";
       tryAgain.style.display = "inline-block";
@@ -773,6 +882,7 @@
       result.style.display       = "none";
       tryAgain.style.display     = "none";
       playerSection.style.display = "none";
+      document.getElementById("lessons-section").style.display = "none";
       // Stop audio and clean up
       audioEl.pause();
       audioEl.currentTime = 0;
