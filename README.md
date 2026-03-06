@@ -71,8 +71,8 @@ Phase 2 (web UI), Phase 3 (playback sync), and Phase 3b (education layer — con
 | Phase | Focus | Status |
 |---|---|---|
 | 1 | CLI engine — audio/MIDI in, chord chart out | ✅ Done |
-| 2 | Web UI — upload in browser, chart rendered in browser | 🔄 In progress |
-| 3 | Playback sync — chords highlight in real time | 🔄 In progress |
+| 2 | Web UI — upload in browser, chart rendered in browser | ✅ Done |
+| 3 | Playback sync — chords highlight in real time | ✅ Done |
 | 3b | Education layer — contextual JustinGuitar / Marty lessons | 🔄 In progress |
 | 4 | Chord quality improvements | Planned |
 | 5 | User accounts + saved charts | Planned |
