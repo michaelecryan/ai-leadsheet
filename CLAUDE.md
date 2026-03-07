@@ -23,49 +23,71 @@ The user is a non-musician. They do not know what a chord progression is. They d
 
 ## Tech Stack
 
-- Language: Python
+- Language: Python 3.11
 - Package manager: `uv` (not pip, not poetry)
 - Music library: `music21`
-- Audio transcription: Basic Pitch (Spotify)
+- Audio transcription: librosa chromagram (default, Phase 4) + Basic Pitch (fallback)
+- Chord detection: `leadsheet/chord_detector.py` — beat-synchronous chromagram + template matching
 - Backend: FastAPI
 - Output format: JSON (chord chart) → browser renderer
 - Legacy output: MusicXML (`.xml`) via CLI still supported
-- Entry point: `main.py`
-- Key files: `analysis.py`, `export.py`, `audio.py`, `simplify.py`, `cli.py`
-- Deployment target: Railway
+- Entry point: `backend/main.py`
+- Key files: `analysis.py`, `export.py`, `audio.py`, `simplify.py`, `cli.py`, `chord_detector.py`
+- Deployment target: Railway (live at `ai-leadsheet-production.up.railway.app`)
 
 ---
 
 ## Current Build State
 
 ### ✅ Built and Working
+
+**Phase 1 — CLI pipeline:**
 - MIDI parsing (`midi.py`) — tempo, time sig, note extraction
-- Key detection (`analysis.py`) — music21 analyzer
+- Key detection (`analysis.py`) — music21 Krumhansl-Schmuckler analyzer
 - Gesture classifier (`analysis.py`) — melody / dyad / strum / arpeggio classification
 - Chord inference by measure (`analysis.py`)
-- Chord simplification (`simplify.py`) — extensions, enharmonics, slash chords
+- Chord simplification (`simplify.py`) — extensions, enharmonics, slash chords, dim → minor
 - Capo suggestion (`simplify.py`) — frets 1–7, guitar-friendly keys
 - MusicXML export (`export.py`) — gesture-aware: notes, dyads, slash noteheads; treble clef forced
 - CLI (`cli.py`) — Typer, --simplify/--no-simplify, --inspect, rich console output
 - Audio transcription (`audio.py`) — Basic Pitch → temp MIDI → pipeline
 - Pitch range filter (`analysis.py`) — strips overtones outside E2–E5 (MIDI 40–76)
 - Arpeggio detection — sequential fingerpicked notes collapse into chord symbol + arpeggio mark
-- FastAPI backend (`main.py`) — `/health` and `/upload` endpoints, accepts audio/MIDI, returns chord chart JSON
+- Diminished chord simplification — `dim` → minor, `dim7` → `m7`
+
+**Phase 2 — Web app shell:**
+- FastAPI backend (`backend/main.py`) — `/health`, `/upload`, `/upload-url` endpoints; async pipeline; CORS-enabled
 - Web UI (`frontend/index.html`) — drag-and-drop upload, loading state with time expectation copy, key + capo + scales display
 - "Your song in X chords" hero section — top 6 chords by frequency with pure SVG finger diagrams (~30 chord shapes in `CHORD_SHAPES` lookup)
 - SVG chord diagram renderer (`buildChordSvg()` in `frontend/index.html`) — no external library; handles open strings, muted strings, barre chords
 - Bar-by-bar chord grid — full progression below hero section
-- Chord timestamps in pipeline output (`time_seconds` per chord, wired up ready for playback sync)
-- Railway deployment config — `Procfile` + `railway.toml` committed; app binds to `0.0.0.0:$PORT`, healthcheck at `/health`
-- Railway deployed and live at `ai-leadsheet-production.up.railway.app` — requires `NIXPACKS_PYTHON_VERSION=3.11` env var in Railway dashboard
+- Chord timestamps in pipeline output (`time_seconds` per chord)
+- Railway deployment — `Procfile` + `railway.toml` committed; live at `ai-leadsheet-production.up.railway.app`; requires `NIXPACKS_PYTHON_VERSION=3.11` env var
 - ONNX runtime backend (`onnxruntime`) — replaces TFLite for cross-platform Basic Pitch inference on Railway (Linux x86_64)
-- Python 3.11 (upgraded from 3.9 for onnxruntime compatibility)
-- Diminished chord simplification (`simplify.py`) — `dim` → minor, `dim7` → `m7`
+- Processing progress indicator — loading copy reads "Transcribing your track… This usually takes 20–40 seconds. Hold tight."
+
+**Phase 3 — Playback sync:** ✅ Complete
+- Audio stored server-side on upload; served back to browser for playback
+- HTML5 `<audio>` playback in browser
+- Real-time chord highlighting — `setInterval` polling of `currentTime` vs `time_seconds` timestamps
+- Current chord block highlighted as audio plays
+
+**Phase 3b — Education layer:** ✅ Complete
+- Static chord-to-lesson lookup table — 20 core beginner chords mapped to JustinGuitar + Marty Music videos
+- Lesson links surfaced in UI after chart is generated, based on detected chords
+- YouTube URL ingestion — user pastes YouTube/Suno/Udio URL → server downloads audio via `yt-dlp` → processes same pipeline
+- YouTube IFrame Player API — chord highlighting synced to YouTube playback when URL submitted
+
+**Phase 4 — Chord quality (partial):** 🔄
+- Librosa chromagram chord detector (`leadsheet/chord_detector.py`) — beat-synchronous chromagram + major/minor template matching
+- Librosa is now the **default** detector (replaced Basic Pitch as primary for audio files)
+- Basic Pitch still available as fallback (higher accuracy for complex audio, slower)
+- Essentia / Demucs evaluation: not done yet
 
 ### 🔄 Active Development
-- Audio playback in browser with real-time chord highlighting (Phase 3 — playback sync)
-- Education layer — contextual JustinGuitar / Marty Music lesson surfacing (Phase 3b)
-- Chord output quality improvements (Essentia and Demucs evaluation in separate branch — Phase 4)
+- Phase 4 continued: Essentia chord detection and Demucs source separation evaluation (#13, #14)
+- Real-world validation: testing on 5–10 Suno/Udio exports across genres
+- Demo video for r/SunoAI (#12)
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
@@ -74,16 +96,17 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - `--for guitar|piano` CLI flag (future phase — guitar only for V1)
 - Melody tabs / fretboard mapper (Phase 8)
 - Piano voicings / piano chord diagrams (later phase — guitar is V1 instrument)
-- URL paste input for mobile (desktop-first for V1, mobile capture layer later)
+- 60-second preview processing for faster first result (#28)
 
 ---
 
 ## Known Issues
 
-- **Processing speed:** Basic Pitch takes 20–30 seconds for a full track. Workaround under evaluation: process first 60 seconds for fast initial result, full track in background.
-- **Progress indicator:** ~~No loading state.~~ Resolved in Issue #6 — loading copy now reads "Transcribing your track… This usually takes 20–40 seconds. Hold tight."
-- **Chord chart noise:** ~~Full bar-by-bar chart is overwhelming.~~ Resolved in Issue #6 — hero section now shows top 6 chords by frequency; bar chart is secondary.
+- **Processing speed (Basic Pitch):** Basic Pitch takes 20–30 seconds for a full track. Librosa is now the default detector and is significantly faster. Basic Pitch fallback still slow. 60-second preview processing not yet implemented (#28).
+- **Progress indicator:** ~~No loading state.~~ Resolved — loading copy now reads "Transcribing your track… This usually takes 20–40 seconds. Hold tight."
+- **Chord chart noise:** ~~Full bar-by-bar chart is overwhelming.~~ Resolved — hero section now shows top 6 chords by frequency; bar chart is secondary.
 - **Diminished chords:** ~~F#dim, Adim, Bdim appearing in output.~~ Resolved — `simplify.py` now collapses `dim` → minor, `dim7` → `m7`.
+- **Demo video:** Not yet posted to r/SunoAI (#12). Blocking V1 "done" criteria.
 
 ---
 
@@ -258,12 +281,12 @@ Exported: chart.xml
 **Primary metric:** % of new users who complete one full play-through of their own song and engage with at least one chord.
 
 V1 is complete when ALL of these are true:
-1. User uploads Suno/Udio audio → receives key + chords in under 10 seconds
-2. Chord display is immediately readable by someone who has never played guitar (large diagrams, no jargon)
-3. Audio plays back with chords highlighting in sync — no theory knowledge required
-4. At least one contextual lesson link (JustinGuitar / Marty) surfaced based on detected chords
-5. Validated on 5–10 real Suno/Udio exports across different genres
-6. Demo video posted to r/SunoAI — generates genuine comments, not just upvotes
+1. ✅ User uploads Suno/Udio audio → receives key + chords in under 10 seconds
+2. ✅ Chord display is immediately readable by someone who has never played guitar (large diagrams, no jargon)
+3. ✅ Audio plays back with chords highlighting in sync — no theory knowledge required
+4. ✅ At least one contextual lesson link (JustinGuitar / Marty) surfaced based on detected chords
+5. ⬜ Validated on 5–10 real Suno/Udio exports across different genres
+6. ⬜ Demo video posted to r/SunoAI — generates genuine comments, not just upvotes (#12)
 
 **Early KPIs:**
 - Activation: % who upload a second song within 7 days
@@ -278,9 +301,9 @@ V1 is complete when ALL of these are true:
 |---|---|---|
 | 1 | CLI engine. Audio/MIDI in, MusicXML out. Simplification. Arpeggio detection. | ✅ Done |
 | 2 | Web UI shell. FastAPI backend. Upload → key + chords displayed in browser. Large chord diagrams, plain-English key explanation. | ✅ Done |
-| 3 | Playback sync. Chords highlight in real time during audio playback. | 🔄 Active |
-| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. Retention mechanism — do not defer past Phase 3. | 🔄 Active |
-| 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
+| 3 | Playback sync. Chords highlight in real time during audio playback. YouTube URL ingestion. | ✅ Done |
+| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. | ✅ Done |
+| 4 | Chord quality improvements. Librosa chromagram as default detector. Essentia/Demucs evaluation pending. | 🔄 Active |
 | 5 | User accounts + chart storage. Auth. Saved charts dashboard. | Not started |
 | 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
 | 7 | PDF export. Formatting polish. | Not started |
@@ -288,13 +311,15 @@ V1 is complete when ALL of these are true:
 
 ---
 
-## Phase 3 Rendering Stack (Decided, Partially Built)
+## Phase 3 Rendering Stack (Complete)
 
 - **Chord chart** — rendered in browser from JSON output (bar-by-bar chord symbols) ✅
 - **Key display** — plain-English explanation + capo tip rendering ✅
 - **Chord diagrams** — pure SVG renderer built in `frontend/index.html`; `CHORD_SHAPES` lookup + `buildChordSvg()` ✅
 - **Hero section** — "Your song in X chords" with top chords by frequency ✅
-- **Playback sync** — Web Audio API reads playback position, highlights current chord block based on `time_seconds` timestamps — next to build (Phase 3)
+- **Playback sync** — `setInterval` polls `audio.currentTime` vs chord `time_seconds`; highlights active chord block ✅
+- **YouTube URL input** — `/upload-url` endpoint downloads audio via `yt-dlp`, runs same pipeline; IFrame Player API used for YouTube playback sync ✅
+- **Education layer** — lesson links shown per chord; static lookup table for 20 core beginner chords (JustinGuitar + Marty Music) ✅
 - **Web architecture** — FastAPI (Python) on Railway handles the pipeline; browser renders display. Server stays pure Python. ✅
 - **Melody tabs** — deferred. Requires fretboard mapper. Add post-V1 only if user demand signals it.
 
