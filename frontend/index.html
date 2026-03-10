@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ai-leadsheet — Your AI song as your first music lesson</title>
+  <title>SoloAct — Your AI song as your first music lesson</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -542,12 +542,23 @@
       font-size: 0.875rem;
       font-weight: 600;
     }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 64px;
+      padding: 24px;
+      text-align: center;
+      color: #444;
+      font-size: 0.8rem;
+    }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #888; }
   </style>
 </head>
 <script src="https://www.youtube.com/iframe_api"></script>
 <body>
   <header>
-    <h1>ai-leadsheet</h1>
+    <h1>SoloAct</h1>
     <p>Drop in your Suno or Udio track. Get the chords.</p>
   </header>
 
@@ -646,10 +657,11 @@
     <div class="modal-card">
       <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
       <h2 id="modal-headline">Like what you see?</h2>
-      <p>Get updates as we build — be first to know when this becomes a real product.</p>
+      <p>Drop your email and we'll notify you when we officially launch.</p>
       <input type="email" id="modal-email" placeholder="you@example.com" autocomplete="email" />
       <button id="modal-submit">Count me in</button>
       <p id="modal-confirm" style="display:none">You're on the list.</p>
+      <p id="modal-error" style="display:none; color:#e05566; font-size:0.8rem; margin-top:8px;">Something went wrong — please try again in a moment.</p>
     </div>
   </div>
 
@@ -1057,8 +1069,8 @@
       result.style.display  = "block";
       tryAgain.style.display = "inline-block";
 
-      // Show email capture modal after 3 seconds (once per device)
-      setTimeout(maybeShowModal, 3000);
+      // Show email capture modal after 10 seconds (once per device)
+      setTimeout(maybeShowModal, 10000);
     }
 
     // ── Audio player ─────────────────────────────────────────────────────────
@@ -1256,13 +1268,23 @@
           setTimeout(() => { emailModal.style.display = "none"; }, 2000);
         } else {
           modalSubmit.disabled = false;
-          modalSubmit.textContent = "Try again";
+          document.getElementById("modal-error").style.display = "block";
         }
       } catch {
         modalSubmit.disabled = false;
-        modalSubmit.textContent = "Try again";
+        document.getElementById("modal-error").style.display = "block";
       }
     }
   </script>
+
+  <footer>
+    <p>
+      Questions? <a href="mailto:info@soloact.app">info@soloact.app</a>
+      &nbsp;·&nbsp;
+      <a href="/privacy">Privacy policy</a>
+      &nbsp;·&nbsp;
+      <a href="/terms">Terms</a>
+    </p>
+  </footer>
 </body>
 </html>

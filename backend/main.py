@@ -300,6 +300,8 @@ async def subscribe(req: SubscribeRequest) -> dict:
         # 409 = contact already exists — treat as success
         if exc.code == 409:
             return {"success": True}
+        body = exc.read().decode(errors="replace")
+        print(f"[subscribe] Resend error {exc.code}: {body}")
         raise HTTPException(status_code=500, detail="Subscription service error.") from exc
 
     return {"success": True}
