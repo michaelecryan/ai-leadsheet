@@ -61,10 +61,16 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - ONNX runtime backend (`onnxruntime`) — replaces TFLite for cross-platform Basic Pitch inference on Railway (Linux x86_64)
 - Python 3.11 (upgraded from 3.9 for onnxruntime compatibility)
 - Diminished chord simplification (`simplify.py`) — `dim` → minor, `dim7` → `m7`
+- YouTube URL ingestion (`/upload-url`) — yt-dlp downloads audio server-side; IFrame Player API syncs chords in browser
+- Education layer — static `LESSON_LOOKUP` table (20 chords → JustinGuitar + Marty Music); `renderLessons()` in `frontend/index.html`
+- librosa chromagram chord detector (`leadsheet/chord_detector.py`) — default audio path; Basic Pitch fallback via `CHORD_DETECTOR=basic_pitch` env var
+- Feature flag `FEATURES.youtubeUrl` in `frontend/index.html` — set `false` for V1 launch (YouTube tab hidden); flip to `true` to re-enable
+- Above-the-fold layout — SVG diagrams + chord cards sized to fit with audio player at 1280×800 without scrolling
+- Email capture modal — 3s delay after results render; `POST /api/subscribe` → Brevo API (env var `BREVO_API_KEY`); once-per-device via localStorage
+- Rate limiting — `slowapi` 10 req/hour per IP on `/upload`; returns 429 with user-friendly message
+- Upload hardening — 20MB size limit (HTTP 413); MIME type validation via `filetype` magic bytes (HTTP 415)
 
 ### 🔄 Active Development
-- Audio playback in browser with real-time chord highlighting (Phase 3 — playback sync)
-- Education layer — contextual JustinGuitar / Marty Music lesson surfacing (Phase 3b)
 - Chord output quality improvements (Essentia and Demucs evaluation in separate branch — Phase 4)
 
 ### ❌ Not Started (Future Phases)
