@@ -450,6 +450,98 @@
       width: 100% !important;
       height: 100% !important;
     }
+
+    /* ── Email capture modal ── */
+    #email-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      cursor: pointer;
+    }
+
+    .modal-card {
+      position: relative;
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 16px;
+      padding: 36px 32px 32px;
+      width: min(440px, calc(100vw - 48px));
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    .modal-close:hover { color: #aaa; }
+
+    .modal-card h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .modal-card > p {
+      color: #888;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    #modal-email {
+      width: 100%;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: #f0f0f0;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    #modal-email:focus { border-color: #6c63ff; }
+
+    #modal-submit {
+      width: 100%;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #modal-submit:hover { background: #5a52d5; }
+
+    #modal-confirm {
+      margin-top: 14px;
+      color: #6c63ff;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
   </style>
 </head>
 <script src="https://www.youtube.com/iframe_api"></script>
@@ -547,6 +639,19 @@
   </div>
 
   <button id="try-again">Upload another track</button>
+
+  <!-- ── Email capture modal ── -->
+  <div id="email-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-card">
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      <h2 id="modal-headline">Like what you see?</h2>
+      <p>Get updates as we build — be first to know when this becomes a real product.</p>
+      <input type="email" id="modal-email" placeholder="you@example.com" autocomplete="email" />
+      <button id="modal-submit">Count me in</button>
+      <p id="modal-confirm" style="display:none">You're on the list.</p>
+    </div>
+  </div>
 
   <script>
     // ── Feature flags ────────────────────────────────────────────────────────
@@ -951,6 +1056,9 @@
 
       result.style.display  = "block";
       tryAgain.style.display = "inline-block";
+
+      // Show email capture modal after 3 seconds (once per device)
+      setTimeout(maybeShowModal, 3000);
     }
 
     // ── Audio player ─────────────────────────────────────────────────────────
@@ -1103,6 +1211,57 @@
       document.getElementById("tab-url").classList.remove("active");
       fileInput.value = "";
       document.getElementById("url-input").value = "";
+    }
+
+    // ── Email capture modal ──────────────────────────────────────────────────
+    const emailModal   = document.getElementById("email-modal");
+    const modalOverlay = document.getElementById("modal-overlay");
+    const modalClose   = document.getElementById("modal-close");
+    const modalSubmit  = document.getElementById("modal-submit");
+    const modalEmail   = document.getElementById("modal-email");
+    const modalConfirm = document.getElementById("modal-confirm");
+
+    function maybeShowModal() {
+      if (localStorage.getItem("emailCaptured")) return;
+      emailModal.style.display = "flex";
+      modalEmail.focus();
+    }
+
+    function dismissModal() {
+      emailModal.style.display = "none";
+      localStorage.setItem("emailCaptured", "1");
+    }
+
+    modalOverlay.addEventListener("click", dismissModal);
+    modalClose.addEventListener("click", dismissModal);
+    modalEmail.addEventListener("keydown", e => { if (e.key === "Enter") submitEmail(); });
+    modalSubmit.addEventListener("click", submitEmail);
+
+    async function submitEmail() {
+      const email = modalEmail.value.trim();
+      if (!email) return;
+      modalSubmit.disabled = true;
+      try {
+        const res = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          modalSubmit.style.display = "none";
+          modalEmail.style.display  = "none";
+          modalConfirm.style.display = "block";
+          localStorage.setItem("emailCaptured", "1");
+          setTimeout(() => { emailModal.style.display = "none"; }, 2000);
+        } else {
+          modalSubmit.disabled = false;
+          modalSubmit.textContent = "Try again";
+        }
+      } catch {
+        modalSubmit.disabled = false;
+        modalSubmit.textContent = "Try again";
+      }
     }
   </script>
 </body>

@@ -11,8 +11,11 @@ Run locally:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import re
 import tempfile
+import urllib.request
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -39,6 +42,14 @@ app.add_middleware(
 class UrlRequest(BaseModel):
     """Request body for URL-based audio ingestion."""
     url: str
+
+
+class SubscribeRequest(BaseModel):
+    """Request body for email list subscription."""
+    email: str
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 _AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a"}
@@ -148,6 +159,20 @@ async def upload_url(req: UrlRequest) -> dict:
                 "quiet": True,
                 "no_warnings": True,
             }
+
+            # Cookie support to bypass bot-detection.
+            # On Railway: set YOUTUBE_COOKIES_B64 to a base64-encoded cookies.txt
+            # Locally: reads cookies from Chrome (or Firefox if Chrome fails)
+            import base64
+            cookies_b64 = os.getenv("YOUTUBE_COOKIES_B64")
+            if cookies_b64:
+                cookies_path = Path(tmp_dir) / "cookies.txt"
+                cookies_path.write_bytes(base64.b64decode(cookies_b64))
+                ydl_opts["cookiefile"] = str(cookies_path)
+            else:
+                # Local dev: pull cookies from the browser
+                ydl_opts["cookiesfrombrowser"] = ("chrome",)
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(req.url, download=True)
 
@@ -200,6 +225,52 @@ async def upload_url(req: UrlRequest) -> dict:
         "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
         "chords": chords,
     }
+
+
+@app.post("/api/subscribe")
+async def subscribe(req: SubscribeRequest) -> dict:
+    """Add an email address to the Brevo mailing list.
+
+    Validates the email format, then either:
+    - Posts to the Brevo Contacts API if BREVO_API_KEY is set (production)
+    - Logs the email to stdout and returns success (dev / missing key)
+    """
+    if not _EMAIL_RE.match(req.email):
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+
+    api_key = os.getenv("BREVO_API_KEY")
+    if not api_key:
+        print(f"[subscribe] BREVO_API_KEY not set — would have subscribed: {req.email}")
+        return {"success": True}
+
+    payload = json.dumps({
+        "email": req.email,
+        "listIds": [1],
+        "updateEnabled": True,
+    }).encode()
+
+    brevo_req = urllib.request.Request(
+        "https://api.brevo.com/v3/contacts",
+        data=payload,
+        headers={
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(brevo_req, timeout=10) as resp:
+            if resp.status not in (201, 204):
+                raise HTTPException(status_code=500, detail="Subscription service error.")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace")
+        # 400 from Brevo means duplicate contact — treat as success
+        if exc.code == 400 and "already associated" in body.lower():
+            return {"success": True}
+        raise HTTPException(status_code=500, detail="Subscription service error.") from exc
+
+    return {"success": True}
 
 
 # Serve the frontend — must be mounted after all API routes so they are not shadowed.
