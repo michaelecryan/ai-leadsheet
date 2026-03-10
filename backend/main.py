@@ -20,7 +20,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from slowapi import Limiter
@@ -305,6 +305,18 @@ async def subscribe(req: SubscribeRequest) -> dict:
         raise HTTPException(status_code=500, detail="Subscription service error.") from exc
 
     return {"success": True}
+
+
+@app.get("/privacy")
+def privacy_policy() -> FileResponse:
+    """Serve the privacy policy page."""
+    return FileResponse("frontend/privacy.html")
+
+
+@app.get("/terms")
+def terms_of_use() -> FileResponse:
+    """Serve the terms of use page."""
+    return FileResponse("frontend/terms.html")
 
 
 # Serve the frontend — must be mounted after all API routes so they are not shadowed.

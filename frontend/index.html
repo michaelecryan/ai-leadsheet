@@ -1153,8 +1153,14 @@
       const card = document.querySelector(`.chord-card[data-chord-idx="${idx}"]`);
       if (card) {
         card.classList.add("active");
-        // Auto-scroll: keep active card visible in the chord grid
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        // Scroll only within the chord-grid container — do not move the page viewport
+        const grid = document.getElementById("chord-grid");
+        if (grid) {
+          const cardTop = card.offsetTop - grid.offsetTop;
+          if (cardTop < grid.scrollTop || cardTop > grid.scrollTop + grid.clientHeight - card.clientHeight) {
+            grid.scrollTop = cardTop - 8;
+          }
+        }
       }
 
       // Highlight matching hero chord
