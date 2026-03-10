@@ -18,10 +18,14 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from leadsheet import analysis, midi
 from leadsheet import simplify as simplify_mod
@@ -29,6 +33,20 @@ from leadsheet.analysis import suggest_scales
 from leadsheet.midi import ParsedMidi
 
 app = FastAPI(title="ai-leadsheet API", version="0.1.0")
+
+# Rate limiter — keyed by client IP address.
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """Return a friendly 429 instead of slowapi's default plain-text response."""
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "You've analysed a lot of songs today. Come back in an hour."},
+    )
+
 
 # Allow the frontend (running on a different port locally, or a different domain
 # in production) to make requests to this server.
@@ -67,7 +85,8 @@ def health() -> dict:
 
 
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)) -> dict:
+@limiter.limit("10/hour")
+async def upload(request: Request, file: UploadFile = File(...)) -> dict:
     """Accept an audio or MIDI file, run the pipeline, and return a chord chart as JSON.
 
     Response shape:
@@ -93,6 +112,24 @@ async def upload(file: UploadFile = File(...)) -> dict:
             while chunk := await file.read(1024 * 1024):
                 tmp.write(chunk)
             tmp_path = Path(tmp.name)
+
+        # Reject files over 20 MB
+        _MAX_BYTES = 20 * 1024 * 1024
+        if tmp_path.stat().st_size > _MAX_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="File too large. Please upload an MP3 or WAV under 20MB.",
+            )
+
+        # Validate actual MIME type by reading magic bytes (guards against renamed files)
+        import filetype as _filetype
+        _ALLOWED_MIMES = {"audio/mpeg", "audio/wav", "audio/flac", "audio/ogg", "audio/x-m4a", "audio/midi"}
+        kind = _filetype.guess(tmp_path)
+        if kind is None or kind.mime not in _ALLOWED_MIMES:
+            raise HTTPException(
+                status_code=415,
+                detail="Unsupported file type. Please upload an audio file.",
+            )
 
         # Run the CPU-heavy pipeline off the event loop so other requests aren't blocked
         parsed, simplified = await asyncio.to_thread(_run_pipeline, tmp_path, suffix)
