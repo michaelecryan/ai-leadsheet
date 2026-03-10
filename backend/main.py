@@ -266,44 +266,39 @@ async def upload_url(req: UrlRequest) -> dict:
 
 @app.post("/api/subscribe")
 async def subscribe(req: SubscribeRequest) -> dict:
-    """Add an email address to the Brevo mailing list.
+    """Add an email address to a Resend Audience.
 
     Validates the email format, then either:
-    - Posts to the Brevo Contacts API if BREVO_API_KEY is set (production)
-    - Logs the email to stdout and returns success (dev / missing key)
+    - Posts to the Resend Contacts API if RESEND_API_KEY + RESEND_AUDIENCE_ID are set
+    - Logs the email to stdout and returns success (dev / missing keys)
     """
     if not _EMAIL_RE.match(req.email):
         raise HTTPException(status_code=400, detail="Invalid email address.")
 
-    api_key = os.getenv("BREVO_API_KEY")
-    if not api_key:
-        print(f"[subscribe] BREVO_API_KEY not set — would have subscribed: {req.email}")
+    api_key     = os.getenv("RESEND_API_KEY")
+    audience_id = os.getenv("RESEND_AUDIENCE_ID")
+    if not api_key or not audience_id:
+        print(f"[subscribe] RESEND_API_KEY/RESEND_AUDIENCE_ID not set — would have subscribed: {req.email}")
         return {"success": True}
 
-    payload = json.dumps({
-        "email": req.email,
-        "listIds": [1],
-        "updateEnabled": True,
-    }).encode()
+    payload = json.dumps({"email": req.email, "unsubscribed": False}).encode()
 
-    brevo_req = urllib.request.Request(
-        "https://api.brevo.com/v3/contacts",
+    resend_req = urllib.request.Request(
+        f"https://api.resend.com/audiences/{audience_id}/contacts",
         data=payload,
         headers={
-            "api-key": api_key,
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "Accept": "application/json",
         },
         method="POST",
     )
     try:
-        with urllib.request.urlopen(brevo_req, timeout=10) as resp:
-            if resp.status not in (201, 204):
+        with urllib.request.urlopen(resend_req, timeout=10) as resp:
+            if resp.status not in (200, 201):
                 raise HTTPException(status_code=500, detail="Subscription service error.")
     except urllib.error.HTTPError as exc:
-        body = exc.read().decode(errors="replace")
-        # 400 from Brevo means duplicate contact — treat as success
-        if exc.code == 400 and "already associated" in body.lower():
+        # 409 = contact already exists — treat as success
+        if exc.code == 409:
             return {"success": True}
         raise HTTPException(status_code=500, detail="Subscription service error.") from exc
 
