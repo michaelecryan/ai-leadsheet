@@ -30,7 +30,7 @@ from leadsheet.midi import ParsedMidi
 # Chord templates (12-bin chroma, C = index 0)
 # ---------------------------------------------------------------------------
 
-NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B']
 
 # Root-position triads: [root, 3rd, 5th]
 _MAJOR_TRIAD = np.array([1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0], dtype=float)  # root, maj 3rd, P5
@@ -210,6 +210,7 @@ def _smooth_chords(symbols: list[str]) -> list[str]:
 
 _SR = 22050          # sample rate for analysis (librosa default)
 _BEATS_PER_BAR = 4   # assume 4/4 — covers the vast majority of AI-generated music
+_MAX_DURATION = 90   # seconds of audio to analyse; chord progressions repeat — 90s covers intro+verse+chorus
 
 
 def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
@@ -219,8 +220,8 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     The ParsedMidi contains tempo + time-sig metadata but no MIDI notes (they are
     not used downstream when this path is active).
     """
-    # 1. Load audio as mono at analysis sample rate
-    y, _ = librosa.load(str(path), sr=_SR, mono=True)
+    # 1. Load audio as mono at analysis sample rate (capped at _MAX_DURATION to limit memory)
+    y, _ = librosa.load(str(path), sr=_SR, mono=True, duration=_MAX_DURATION)
 
     # 2. Beat tracking — extract tempo and beat frame positions.
     # Uses the full signal (y) — beat_track relies on percussive transients.
@@ -282,6 +283,9 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     ]
 
     # 12. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
+    # Guard against BPM=0 (can happen with very short or silent audio)
+    if bpm <= 0:
+        raise ValueError("Could not detect a tempo — the audio may be too short or silent.")
     tempo_us = int(60_000_000 / bpm)
     parsed = ParsedMidi(
         ticks_per_beat=480,

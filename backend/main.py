@@ -38,6 +38,11 @@ app = FastAPI(title="ai-leadsheet API", version="0.1.0")
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
+# Pipeline concurrency guard — the librosa analysis pipeline is CPU/memory heavy.
+# Limit simultaneous pipeline runs to avoid OOM on constrained Railway instances.
+# Requests beyond this limit queue and wait rather than crashing the server.
+_PIPELINE_SEMAPHORE = asyncio.Semaphore(2)
+
 
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
@@ -52,7 +57,10 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONR
 # in production) to make requests to this server.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Tighten this when deploying to production
+    allow_origins=[
+        "https://soloact.app",
+        "https://www.soloact.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -131,8 +139,10 @@ async def upload(request: Request, file: UploadFile = File(...)) -> dict:
                 detail="Unsupported file type. Please upload an audio file.",
             )
 
-        # Run the CPU-heavy pipeline off the event loop so other requests aren't blocked
-        parsed, simplified = await asyncio.to_thread(_run_pipeline, tmp_path, suffix)
+        # Run the CPU-heavy pipeline off the event loop so other requests aren't blocked.
+        # The semaphore caps concurrent pipeline runs to avoid OOM on constrained instances.
+        async with _PIPELINE_SEMAPHORE:
+            parsed, simplified = await asyncio.to_thread(_run_pipeline, tmp_path, suffix)
 
         key = simplified.key
         scales = suggest_scales(key)
@@ -185,6 +195,13 @@ async def upload_url(req: UrlRequest) -> dict:
     passes through the same librosa pipeline as a file upload. Returns the same
     JSON shape as /upload, plus video_id and title for the frontend YouTube embed.
     """
+    from urllib.parse import urlparse as _urlparse
+
+    _ALLOWED_URL_HOSTS = {"www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com", "suno.com", "www.suno.com"}
+    _parsed_url = _urlparse(req.url)
+    if _parsed_url.hostname not in _ALLOWED_URL_HOSTS:
+        raise HTTPException(status_code=400, detail="Only YouTube URLs are supported.")
+
     import yt_dlp
 
     try:
@@ -226,7 +243,8 @@ async def upload_url(req: UrlRequest) -> dict:
             audio_path = audio_files[0]
             suffix = audio_path.suffix.lower()
 
-            parsed, simplified = await asyncio.to_thread(_run_pipeline, audio_path, suffix)
+            async with _PIPELINE_SEMAPHORE:
+                parsed, simplified = await asyncio.to_thread(_run_pipeline, audio_path, suffix)
 
     except HTTPException:
         raise

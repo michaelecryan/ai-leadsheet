@@ -76,7 +76,10 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - Explicit `/privacy` and `/terms` FastAPI routes — `FileResponse` routes added before `app.mount()` (Starlette `StaticFiles(html=True)` does NOT auto-serve `.html` for extensionless paths)
 - Playback scroll fix — `highlightChordAt()` uses container-scoped `scrollTop` on `#chord-grid` instead of `scrollIntoView` (which caused full-page viewport scroll away from hero diagrams)
 - Landing page entice layer — hero headline "Your AI song. Your first guitar lesson." + 3-column feature strip (Chord diagrams / Play along / Learn) above upload box; strip hides when results show, reappears on reset
-- **Chord detector quality pass (Phase 4)** — three improvements to `leadsheet/chord_detector.py`:
+- **Security hardening** — CORS locked to `soloact.app`/`www.soloact.app`; URL allowlist on `/upload-url` (YouTube + Suno only) blocks SSRF; BPM=0 guard in chord detector prevents ZeroDivisionError on silent/short audio
+- **A# → Bb enharmonic fix** — `NOTE_NAMES` in `chord_detector.py` and `_SEMITONE_TO_NAME` in `simplify.py` now use `Bb` (guitar standard); Bb chord shape + lesson entry added to frontend; JustinGuitar URL slugs fixed: `em`→`emin`, `dm`→`dmin`, `bm`→`bmin`
+- **Memory + concurrency hardening** — `librosa.load()` capped at 90 seconds (`_MAX_DURATION`); `_PIPELINE_SEMAPHORE = asyncio.Semaphore(2)` in `backend/main.py` queues excess concurrent requests instead of OOM-crashing; bump to 4 when upgrading Railway plan
+- **Chord detector quality pass (Phase 4)** — five improvements to `leadsheet/chord_detector.py`:
   1. **HPSS** (`librosa.effects.hpss`) strips drum transients before chromagram; beat tracking retains full signal
   2. **Chroma normalization** (`librosa.util.normalize`) clamps near-zero frames so quiet passages don't produce noisy matches
   3. **Diatonic key bias** — detected key's diatonic chords get +0.06 cosine score bonus to resolve major/minor ambiguity (e.g. F vs Fm)
