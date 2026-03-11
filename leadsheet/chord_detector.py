@@ -208,66 +208,78 @@ def _smooth_chords(symbols: list[str]) -> list[str]:
 # Public entry point
 # ---------------------------------------------------------------------------
 
-_SR = 22050          # sample rate for analysis (librosa default)
+_SR_HIRES = 22050    # high sample rate for key detection (first 30s) — preserves full harmonics
+_SR_LORES = 11025    # low sample rate for chord detection — filters HF noise, halves memory
 _BEATS_PER_BAR = 4   # assume 4/4 — covers the vast majority of AI-generated music
-_MAX_DURATION = 90   # seconds of audio to analyse; chord progressions repeat — 90s covers intro+verse+chorus
+_KEY_DURATION = 30   # seconds at high SR for accurate key/first-chord detection
+_MAX_DURATION = 180  # seconds at low SR for full-song chord coverage
 
 
 def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
-    """Load audio and detect chords via beat-synchronous chromagram matching.
+    """Load audio and detect chords via two-stage beat-synchronous chromagram matching.
+
+    Stage 1 (key detection): First 30s at 22050 Hz — high resolution preserves
+    the full harmonic spectrum needed for accurate first-chord and key detection.
+
+    Stage 2 (chord detection): Full song at 11025 Hz — lower sample rate filters
+    high-frequency noise from rich productions (Suno v5, heavy distortion) while
+    keeping memory within Railway's 512 MB constraint.
 
     Returns a (ParsedMidi, Analysis) pair compatible with the rest of the pipeline.
-    The ParsedMidi contains tempo + time-sig metadata but no MIDI notes (they are
-    not used downstream when this path is active).
     """
-    # 1. Load audio as mono at analysis sample rate (capped at _MAX_DURATION to limit memory)
-    y, _ = librosa.load(str(path), sr=_SR, mono=True, duration=_MAX_DURATION)
+    import gc
 
-    # 2. Beat tracking — extract tempo and beat frame positions.
-    # Uses the full signal (y) — beat_track relies on percussive transients.
-    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=_SR, units='frames')
-    bpm = float(np.atleast_1d(tempo)[0])
+    # ── Stage 1: Key detection from first 30s at high resolution ──────────
+    y_hi, _ = librosa.load(str(path), sr=_SR_HIRES, mono=True, duration=_KEY_DURATION)
+    y_harm_hi, _ = librosa.effects.hpss(y_hi)
+    chroma_hi = librosa.feature.chroma_cqt(y=y_harm_hi, sr=_SR_HIRES)
+    chroma_hi = librosa.util.normalize(chroma_hi, norm=2, threshold=1e-3, fill=True)
 
-    # 3. Harmonic-percussive source separation (HPSS).
-    # Drum hits and transients create broadband spectral bursts that activate all
-    # 12 chroma bins simultaneously, raising a noise floor that competes with the
-    # true harmonic content. Stripping them before chroma extraction significantly
-    # reduces false chord detections, especially in drum-heavy bars.
-    y_harmonic, _ = librosa.effects.hpss(y)
+    # Beat-sync the high-res chroma to detect the first chord accurately
+    _, beat_frames_hi = librosa.beat.beat_track(y=y_hi, sr=_SR_HIRES, units='frames')
+    beat_chroma_hi = librosa.util.sync(chroma_hi, beat_frames_hi, aggregate=np.median)
 
-    # 4. Constant-Q chromagram on the harmonic-only signal.
-    chroma = librosa.feature.chroma_cqt(y=y_harmonic, sr=_SR)  # shape: (12, n_frames)
-
-    # 5. Clamp near-zero energy frames before beat-sync.
-    # Quiet passages (intros, fade-outs) produce near-zero chroma vectors whose
-    # cosine similarity scores are dominated by noise. L2 normalization with a
-    # minimum threshold suppresses these frames; fill=True replaces them with a
-    # uniform distribution (1/√12 per bin) which the downstream median aggregation
-    # averages away harmlessly.
-    chroma = librosa.util.normalize(chroma, norm=2, threshold=1e-3, fill=True)
-
-    # 6. Beat-synchronous chroma: median chroma within each inter-beat interval
-    beat_chroma = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
-    # shape: (12, n_beats)
-
-    # 7. First-pass chord detection WITHOUT diatonic bias.
-    # The first chord is passed to key detection to resolve the common failure
-    # where K-S returns a relative-key false positive (e.g. "F major" for an
-    # Am G F C song that is actually in A minor).
-    n_beats = beat_chroma.shape[1]
-    raw_symbols: list[str] = []
-    for bar_start in range(0, n_beats, _BEATS_PER_BAR):
-        bar_chroma = beat_chroma[:, bar_start : bar_start + _BEATS_PER_BAR]
+    n_beats_hi = beat_chroma_hi.shape[1]
+    raw_symbols_hi: list[str] = []
+    for bar_start in range(0, n_beats_hi, _BEATS_PER_BAR):
+        bar_chroma = beat_chroma_hi[:, bar_start : bar_start + _BEATS_PER_BAR]
         if bar_chroma.shape[1] == 0:
             break
-        raw_symbols.append(_detect_chord(bar_chroma.mean(axis=1)))
+        raw_symbols_hi.append(_detect_chord(bar_chroma.mean(axis=1)))
 
-    # 8. Key detection informed by the first detected chord.
-    first_chord = raw_symbols[0] if raw_symbols else None
-    key = _detect_key(chroma.mean(axis=1), first_chord=first_chord)
+    first_chord = raw_symbols_hi[0] if raw_symbols_hi else None
+    key = _detect_key(chroma_hi.mean(axis=1), first_chord=first_chord)
     diatonic = _diatonic_chords(key)
 
-    # 10. Second-pass chord detection WITH corrected diatonic bias.
+    # Free all stage 1 data before loading the full song
+    del y_hi, y_harm_hi, chroma_hi, beat_chroma_hi, beat_frames_hi
+    gc.collect()
+
+    # ── Stage 2: Full-song chord detection at low resolution ──────────────
+    y, _ = librosa.load(str(path), sr=_SR_LORES, mono=True, duration=_MAX_DURATION)
+
+    # Beat tracking on full signal (needs percussive transients)
+    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=_SR_LORES, units='frames')
+    bpm = float(np.atleast_1d(tempo)[0])
+
+    # HPSS — strip drums before chroma extraction
+    y_harmonic, _ = librosa.effects.hpss(y)
+    del y  # free raw signal — only harmonic needed from here
+    gc.collect()
+
+    # Constant-Q chromagram on harmonic-only signal
+    chroma = librosa.feature.chroma_cqt(y=y_harmonic, sr=_SR_LORES)
+    del y_harmonic
+    gc.collect()
+
+    # Clamp near-zero energy frames
+    chroma = librosa.util.normalize(chroma, norm=2, threshold=1e-3, fill=True)
+
+    # Beat-synchronous chroma (median per beat interval)
+    beat_chroma = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
+
+    # Chord detection with diatonic bias from stage 1's key
+    n_beats = beat_chroma.shape[1]
     symbols: list[str] = []
     for bar_start in range(0, n_beats, _BEATS_PER_BAR):
         bar_chroma = beat_chroma[:, bar_start : bar_start + _BEATS_PER_BAR]
@@ -275,7 +287,7 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
             break
         symbols.append(_detect_chord(bar_chroma.mean(axis=1), diatonic=diatonic))
 
-    # 11. Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
+    # Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
     symbols = _smooth_chords(symbols)
 
     chords: list[MeasureChord] = [

@@ -41,7 +41,7 @@ app.state.limiter = limiter
 # Pipeline concurrency guard — the librosa analysis pipeline is CPU/memory heavy.
 # Limit simultaneous pipeline runs to avoid OOM on constrained Railway instances.
 # Requests beyond this limit queue and wait rather than crashing the server.
-_PIPELINE_SEMAPHORE = asyncio.Semaphore(2)
+_PIPELINE_SEMAPHORE = asyncio.Semaphore(1)
 
 
 @app.exception_handler(RateLimitExceeded)
