@@ -79,16 +79,73 @@ def _detect_key(chroma_mean: np.ndarray) -> str:
 # Chord detection — cosine similarity to templates
 # ---------------------------------------------------------------------------
 
-def _detect_chord(chroma: np.ndarray) -> str:
-    """Match a 12-bin chroma vector to the best-fitting major/minor chord template."""
+# Scale degree intervals (semitones from root) for diatonic triad quality lookup
+_MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
+_MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10]
+# Chord quality per scale degree (major key: I ii iii IV V vi vii°→m)
+_MAJOR_QUALITIES = ['', 'm', 'm', '', '', 'm', 'm']
+# Chord quality per scale degree (natural minor: i ii°→m III iv v VI VII)
+_MINOR_QUALITIES = ['m', 'm', '', 'm', 'm', '', '']
+
+_DIATONIC_BIAS = 0.06  # added to cosine score for diatonic chords
+
+
+def _diatonic_chords(key: str) -> set[str]:
+    """Return the set of chord symbols diatonic to the given key string (e.g. 'A minor')."""
+    parts = key.split()
+    if len(parts) < 2:
+        return set()
+    root_name, mode = parts[0], parts[1]
+    if root_name not in NOTE_NAMES:
+        return set()
+    root = NOTE_NAMES.index(root_name)
+    if mode == 'major':
+        return {
+            NOTE_NAMES[(root + interval) % 12] + quality
+            for interval, quality in zip(_MAJOR_SCALE, _MAJOR_QUALITIES)
+        }
+    elif mode == 'minor':
+        return {
+            NOTE_NAMES[(root + interval) % 12] + quality
+            for interval, quality in zip(_MINOR_SCALE, _MINOR_QUALITIES)
+        }
+    return set()
+
+
+def _detect_chord(chroma: np.ndarray, diatonic: set[str] | None = None) -> str:
+    """Match a 12-bin chroma vector to the best-fitting major/minor chord template.
+
+    If a diatonic set is provided, chords within the key receive a small score
+    bonus (_DIATONIC_BIAS) to resolve ambiguous major/minor cases toward the
+    harmonically expected quality.
+    """
     c = chroma / (np.linalg.norm(chroma) + 1e-9)
     best_chord, best_score = 'C', -np.inf
     for name, template in _TEMPLATES.items():
         score = float(np.dot(c, template))
+        if diatonic and name in diatonic:
+            score += _DIATONIC_BIAS
         if score > best_score:
             best_score = score
             best_chord = name
     return best_chord
+
+
+def _smooth_chords(symbols: list[str]) -> list[str]:
+    """Remove isolated single-bar chord anomalies.
+
+    If a bar's chord differs from both its immediate neighbours (which agree
+    with each other), replace it with the neighbour chord. This eliminates
+    flickering caused by one bar of ambiguous chroma without affecting
+    genuine chord changes.
+    """
+    if len(symbols) < 3:
+        return symbols
+    result = list(symbols)
+    for i in range(1, len(symbols) - 1):
+        if result[i - 1] == result[i + 1] and result[i] != result[i - 1]:
+            result[i] = result[i - 1]
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -120,22 +177,28 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     beat_chroma = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
     # shape: (12, n_beats)
 
-    # 5. Group beats into measures; detect one chord per measure
+    # 5. Key detection from whole-song chroma mean (needed for diatonic bias below)
+    key = _detect_key(chroma.mean(axis=1))
+    diatonic = _diatonic_chords(key)
+
+    # 6. Group beats into measures; detect one chord per measure
     n_beats = beat_chroma.shape[1]
-    chords: list[MeasureChord] = []
+    symbols: list[str] = []
     for bar_start in range(0, n_beats, _BEATS_PER_BAR):
         bar_chroma = beat_chroma[:, bar_start : bar_start + _BEATS_PER_BAR]
         if bar_chroma.shape[1] == 0:
             break
         measure_chroma = bar_chroma.mean(axis=1)
-        symbol = _detect_chord(measure_chroma)
-        measure_num = bar_start // _BEATS_PER_BAR + 1
-        chords.append(MeasureChord(measure=measure_num, symbol=symbol))
+        symbols.append(_detect_chord(measure_chroma, diatonic=diatonic))
 
-    # 6. Key detection from whole-song chroma mean
-    key = _detect_key(chroma.mean(axis=1))
+    # 7. Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
+    symbols = _smooth_chords(symbols)
 
-    # 7. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
+    chords: list[MeasureChord] = [
+        MeasureChord(measure=i + 1, symbol=sym) for i, sym in enumerate(symbols)
+    ]
+
+    # 8. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
     tempo_us = int(60_000_000 / bpm)
     parsed = ParsedMidi(
         ticks_per_beat=480,
