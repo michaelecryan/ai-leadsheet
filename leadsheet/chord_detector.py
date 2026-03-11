@@ -166,22 +166,38 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     # 1. Load audio as mono at analysis sample rate
     y, _ = librosa.load(str(path), sr=_SR, mono=True)
 
-    # 2. Beat tracking — extract tempo and beat frame positions
+    # 2. Beat tracking — extract tempo and beat frame positions.
+    # Uses the full signal (y) — beat_track relies on percussive transients.
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=_SR, units='frames')
     bpm = float(np.atleast_1d(tempo)[0])
 
-    # 3. Constant-Q chromagram (better harmonic resolution than STFT chroma)
-    chroma = librosa.feature.chroma_cqt(y=y, sr=_SR)  # shape: (12, n_frames)
+    # 3. Harmonic-percussive source separation (HPSS).
+    # Drum hits and transients create broadband spectral bursts that activate all
+    # 12 chroma bins simultaneously, raising a noise floor that competes with the
+    # true harmonic content. Stripping them before chroma extraction significantly
+    # reduces false chord detections, especially in drum-heavy bars.
+    y_harmonic, _ = librosa.effects.hpss(y)
 
-    # 4. Beat-synchronous chroma: median chroma within each inter-beat interval
+    # 4. Constant-Q chromagram on the harmonic-only signal.
+    chroma = librosa.feature.chroma_cqt(y=y_harmonic, sr=_SR)  # shape: (12, n_frames)
+
+    # 5. Clamp near-zero energy frames before beat-sync.
+    # Quiet passages (intros, fade-outs) produce near-zero chroma vectors whose
+    # cosine similarity scores are dominated by noise. L2 normalization with a
+    # minimum threshold suppresses these frames; fill=True replaces them with a
+    # uniform distribution (1/√12 per bin) which the downstream median aggregation
+    # averages away harmlessly.
+    chroma = librosa.util.normalize(chroma, norm=2, threshold=1e-3, fill=True)
+
+    # 6. Beat-synchronous chroma: median chroma within each inter-beat interval
     beat_chroma = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
     # shape: (12, n_beats)
 
-    # 5. Key detection from whole-song chroma mean (needed for diatonic bias below)
+    # 7. Key detection from whole-song chroma mean (needed for diatonic bias below)
     key = _detect_key(chroma.mean(axis=1))
     diatonic = _diatonic_chords(key)
 
-    # 6. Group beats into measures; detect one chord per measure
+    # 8. Group beats into measures; detect one chord per measure
     n_beats = beat_chroma.shape[1]
     symbols: list[str] = []
     for bar_start in range(0, n_beats, _BEATS_PER_BAR):
@@ -191,14 +207,14 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
         measure_chroma = bar_chroma.mean(axis=1)
         symbols.append(_detect_chord(measure_chroma, diatonic=diatonic))
 
-    # 7. Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
+    # 9. Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
     symbols = _smooth_chords(symbols)
 
     chords: list[MeasureChord] = [
         MeasureChord(measure=i + 1, symbol=sym) for i, sym in enumerate(symbols)
     ]
 
-    # 8. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
+    # 10. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
     tempo_us = int(60_000_000 / bpm)
     parsed = ParsedMidi(
         ticks_per_beat=480,
