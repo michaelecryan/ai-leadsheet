@@ -281,25 +281,19 @@ async def subscribe(req: SubscribeRequest) -> dict:
         print(f"[subscribe] RESEND_API_KEY/RESEND_AUDIENCE_ID not set — would have subscribed: {req.email}")
         return {"success": True}
 
-    payload = json.dumps({"email": req.email, "unsubscribed": False}).encode()
-
-    resend_req = urllib.request.Request(
-        f"https://api.resend.com/audiences/{audience_id}/contacts",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    import resend as resend_sdk
+    resend_sdk.api_key = api_key
     try:
-        with urllib.request.urlopen(resend_req, timeout=10) as resp:
-            print(f"[subscribe] Resend response {resp.status} for {req.email}")
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode(errors="replace")
-        print(f"[subscribe] Resend HTTP error {exc.code}: {body}")
-        # 409 = contact already exists — treat as success
-        if exc.code == 409:
+        resend_sdk.Contacts.create({
+            "email": req.email,
+            "unsubscribed": False,
+            "audience_id": audience_id,
+        })
+        print(f"[subscribe] Resend contact created for {req.email}")
+    except resend_sdk.exceptions.ResendError as exc:
+        print(f"[subscribe] Resend error {exc}: {exc}")
+        # Already exists — treat as success
+        if "already exists" in str(exc).lower() or getattr(exc, "status_code", 0) == 422:
             return {"success": True}
         raise HTTPException(status_code=500, detail="Subscription service error.") from exc
     except Exception as exc:
