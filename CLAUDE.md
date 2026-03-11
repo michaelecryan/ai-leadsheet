@@ -66,12 +66,19 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - librosa chromagram chord detector (`leadsheet/chord_detector.py`) — default audio path; Basic Pitch fallback via `CHORD_DETECTOR=basic_pitch` env var
 - Feature flag `FEATURES.youtubeUrl` in `frontend/index.html` — set `false` for V1 launch (YouTube tab hidden); flip to `true` to re-enable
 - Above-the-fold layout — SVG diagrams + chord cards sized to fit with audio player at 1280×800 without scrolling
-- Email capture modal — 3s delay after results render; `POST /api/subscribe` → Brevo API (env var `BREVO_API_KEY`); once-per-device via localStorage
+- Email capture modal — 10s delay after results render; `POST /api/subscribe` → Resend Audiences API via `resend` Python SDK (env vars `RESEND_API_KEY` + `RESEND_AUDIENCE_ID`); once-per-device via localStorage (`emailCaptured` key)
 - Rate limiting — `slowapi` 10 req/hour per IP on `/upload`; returns 429 with user-friendly message
 - Upload hardening — 20MB size limit (HTTP 413); MIME type validation via `filetype` magic bytes (HTTP 415)
+- SoloAct rebrand — all "ai-leadsheet" references replaced with "SoloAct" in UI; domain soloact.app
+- Contact footer — `info@soloact.app` + Privacy policy + Terms links on every page
+- Privacy policy (`frontend/privacy.html`) — GDPR-compliant; covers email-only collection, Resend as processor, consent basis, right to erasure, localStorage note
+- Terms of use (`frontend/terms.html`) — covers no-warranty on transcription accuracy, user content responsibility, rate limits, limitation of liability
+- Explicit `/privacy` and `/terms` FastAPI routes — `FileResponse` routes added before `app.mount()` (Starlette `StaticFiles(html=True)` does NOT auto-serve `.html` for extensionless paths)
+- Playback scroll fix — `highlightChordAt()` uses container-scoped `scrollTop` on `#chord-grid` instead of `scrollIntoView` (which caused full-page viewport scroll away from hero diagrams)
 
 ### 🔄 Active Development
 - Chord output quality improvements (Essentia and Demucs evaluation in separate branch — Phase 4)
+- Suno API integration exploration (user requested — not yet started)
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
@@ -217,6 +224,16 @@ Built in `analysis.py`. Classifies note events into gesture types; rendered diff
 
 ---
 
+## Deployment & Integration Notes
+
+- **Resend SDK required** — `urllib.request` to `api.resend.com` gets 403 (Cloudflare error 1010 = IP blocked). Always use the `resend` Python SDK (`resend.Contacts.create()`), never raw HTTP.
+- **Resend API key scope** — must be Full access (not Sending-only) to write to Audiences.
+- **StaticFiles html=True does not serve `.html` for extensionless paths** — `/privacy` will NOT find `privacy.html` automatically. Add explicit `@app.get()` routes returning `FileResponse` before `app.mount()`.
+- **`scrollIntoView` scrolls the page viewport** — use container-scoped `element.scrollTop` instead when you only want scroll within a bounded `overflow-y: auto` container.
+- **yt-dlp on Railway** — set `YOUTUBE_COOKIES_B64` env var (base64-encoded cookies.txt); locally falls back to `cookiesfrombrowser: ("chrome",)`.
+
+---
+
 ## Hard Rules — Never Do These
 
 - ❌ Do not add drum or bass output
@@ -284,8 +301,8 @@ V1 is complete when ALL of these are true:
 |---|---|---|
 | 1 | CLI engine. Audio/MIDI in, MusicXML out. Simplification. Arpeggio detection. | ✅ Done |
 | 2 | Web UI shell. FastAPI backend. Upload → key + chords displayed in browser. Large chord diagrams, plain-English key explanation. | ✅ Done |
-| 3 | Playback sync. Chords highlight in real time during audio playback. | 🔄 Active |
-| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. Retention mechanism — do not defer past Phase 3. | 🔄 Active |
+| 3 | Playback sync. Chords highlight in real time during audio playback. | ✅ Done |
+| 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. Retention mechanism — do not defer past Phase 3. | ✅ Done |
 | 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
 | 5 | User accounts + chart storage. Auth. Saved charts dashboard. | Not started |
 | 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
