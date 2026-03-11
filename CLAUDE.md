@@ -75,10 +75,17 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - Terms of use (`frontend/terms.html`) — covers no-warranty on transcription accuracy, user content responsibility, rate limits, limitation of liability
 - Explicit `/privacy` and `/terms` FastAPI routes — `FileResponse` routes added before `app.mount()` (Starlette `StaticFiles(html=True)` does NOT auto-serve `.html` for extensionless paths)
 - Playback scroll fix — `highlightChordAt()` uses container-scoped `scrollTop` on `#chord-grid` instead of `scrollIntoView` (which caused full-page viewport scroll away from hero diagrams)
+- Landing page entice layer — hero headline "Your AI song. Your first guitar lesson." + 3-column feature strip (Chord diagrams / Play along / Learn) above upload box; strip hides when results show, reappears on reset
+- **Chord detector quality pass (Phase 4)** — three improvements to `leadsheet/chord_detector.py`:
+  1. **HPSS** (`librosa.effects.hpss`) strips drum transients before chromagram; beat tracking retains full signal
+  2. **Chroma normalization** (`librosa.util.normalize`) clamps near-zero frames so quiet passages don't produce noisy matches
+  3. **Diatonic key bias** — detected key's diatonic chords get +0.06 cosine score bonus to resolve major/minor ambiguity (e.g. F vs Fm)
+  4. **Temporal smoothing** (`_smooth_chords`) replaces isolated single-bar anomalies with neighbour chord
+  5. **Two-pass first-chord key correction** — bias-free first pass detects chords; first chord passed to `_detect_key()` which scans top-8 K-S candidates for one whose tonic matches; resolves the relative-key false-positive bug (K-S returning "F major" for songs in A minor) that caused Gm hallucinations
 
 ### 🔄 Active Development
-- Chord output quality improvements (Essentia and Demucs evaluation in separate branch — Phase 4)
 - Suno API integration exploration (user requested — not yet started)
+- Phase 4 chord quality: further validation on diverse real-world uploads needed
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
@@ -231,6 +238,8 @@ Built in `analysis.py`. Classifies note events into gesture types; rendered diff
 - **StaticFiles html=True does not serve `.html` for extensionless paths** — `/privacy` will NOT find `privacy.html` automatically. Add explicit `@app.get()` routes returning `FileResponse` before `app.mount()`.
 - **`scrollIntoView` scrolls the page viewport** — use container-scoped `element.scrollTop` instead when you only want scroll within a bounded `overflow-y: auto` container.
 - **yt-dlp on Railway** — set `YOUTUBE_COOKIES_B64` env var (base64-encoded cookies.txt); locally falls back to `cookiesfrombrowser: ("chrome",)`.
+- **K-S key detection relative-key bug** — Krumhansl-Schmuckler profiles cannot distinguish relative major/minor pairs from chroma alone (e.g. "F major" scores 0.76 vs "A minor" 0.63 for an Am G F C song). Fix: two-pass detection — first pass gets raw chords; first chord is passed to `_detect_key()` which scans top-8 candidates for one whose tonic matches. Songs almost always start on the tonic.
+- **HPSS must use full signal for beat tracking** — `librosa.effects.hpss()` removes drum transients; `librosa.beat.beat_track()` relies on those transients. Always run beat tracking on the original `y`, not `y_harmonic`.
 
 ---
 
