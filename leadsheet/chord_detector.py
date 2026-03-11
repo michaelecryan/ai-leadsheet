@@ -60,19 +60,36 @@ _KS_MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66
 _KS_MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
 
 
-def _detect_key(chroma_mean: np.ndarray) -> str:
-    """Estimate key from mean chroma using Krumhansl-Schmuckler correlation."""
+def _detect_key(chroma_mean: np.ndarray, first_chord: str | None = None) -> str:
+    """Estimate key from mean chroma using Krumhansl-Schmuckler correlation.
+
+    When `first_chord` is provided, the top-8 K-S candidates are scanned for
+    one whose tonic chord matches the first detected chord of the song. Songs
+    almost always start on the tonic, so this reliably resolves the common
+    failure mode where K-S returns a relative-key false positive
+    (e.g. 'F major' for an Am G F C song that is actually in A minor).
+
+    Falls back to the raw K-S winner if no candidate's tonic matches.
+    """
     c = chroma_mean - chroma_mean.mean()
-    best_key, best_r = 'C major', -np.inf
+    scores: list[tuple[float, str]] = []
     for i, name in enumerate(NOTE_NAMES):
         for mode, profile in (('major', _KS_MAJOR), ('minor', _KS_MINOR)):
             p = np.roll(profile, i)
             p = p - p.mean()
-            r = np.dot(c, p) / (np.linalg.norm(c) * np.linalg.norm(p) + 1e-9)
-            if r > best_r:
-                best_r = r
-                best_key = f'{name} {mode}'
-    return best_key
+            r = float(np.dot(c, p) / (np.linalg.norm(c) * np.linalg.norm(p) + 1e-9))
+            scores.append((r, f'{name} {mode}'))
+    scores.sort(reverse=True)
+
+    if first_chord:
+        # Prefer whichever top-8 key has `first_chord` as its tonic (I or i).
+        for _, key in scores[:8]:
+            root, mode = key.split()
+            tonic = root if mode == 'major' else root + 'm'
+            if first_chord == tonic:
+                return key
+
+    return scores[0][1]
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +146,45 @@ def _detect_chord(chroma: np.ndarray, diatonic: set[str] | None = None) -> str:
             best_score = score
             best_chord = name
     return best_chord
+
+
+def _disambiguate_relative_key(key: str, raw_symbols: list[str]) -> str:
+    """Resolve relative major/minor ambiguity using chord-content heuristics.
+
+    The Krumhansl-Schmuckler algorithm struggles to distinguish relative major/minor
+    pairs because they share the same pitch classes. A song in A minor (Am, G, F, C)
+    can outscore A minor with F major because F, C, G, and A are all diatonic to F.
+
+    Two signals disambiguate:
+    1. The first chord of a song is almost always the tonic — if it's the relative
+       minor tonic (e.g. Am when the key is F major), prefer the minor key.
+    2. The relative minor tonic must appear at least as often as the major tonic —
+       guards against songs that genuinely start on the vi chord in a major key.
+
+    Only applied when K-S returns major; minor detections are typically correct.
+    """
+    if not raw_symbols:
+        return key
+    parts = key.split()
+    if len(parts) < 2 or parts[1] != 'major':
+        return key
+
+    root = NOTE_NAMES.index(parts[0])
+    rel_minor_root = NOTE_NAMES[(root + 9) % 12]  # e.g. F → A
+    minor_tonic = rel_minor_root + 'm'             # e.g. 'Am'
+
+    first_is_minor = raw_symbols[0] == minor_tonic
+    major_count = raw_symbols.count(parts[0])
+    minor_count = raw_symbols.count(minor_tonic)
+
+    # Switch to relative minor if the first chord is the minor tonic and it
+    # appears at least 60% as often as the major tonic chord. The 0.6 threshold
+    # handles songs where the major tonic chord appears in extended sections
+    # (e.g. a bridge of sustained F chords) while the true tonal centre is the
+    # relative minor. A genuine F major song would have Am appear far less often.
+    if first_is_minor and minor_count >= major_count * 0.6:
+        return f'{rel_minor_root} minor'
+    return key
 
 
 def _smooth_chords(symbols: list[str]) -> list[str]:
@@ -193,28 +249,39 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     beat_chroma = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
     # shape: (12, n_beats)
 
-    # 7. Key detection from whole-song chroma mean (needed for diatonic bias below)
-    key = _detect_key(chroma.mean(axis=1))
+    # 7. First-pass chord detection WITHOUT diatonic bias.
+    # The first chord is passed to key detection to resolve the common failure
+    # where K-S returns a relative-key false positive (e.g. "F major" for an
+    # Am G F C song that is actually in A minor).
+    n_beats = beat_chroma.shape[1]
+    raw_symbols: list[str] = []
+    for bar_start in range(0, n_beats, _BEATS_PER_BAR):
+        bar_chroma = beat_chroma[:, bar_start : bar_start + _BEATS_PER_BAR]
+        if bar_chroma.shape[1] == 0:
+            break
+        raw_symbols.append(_detect_chord(bar_chroma.mean(axis=1)))
+
+    # 8. Key detection informed by the first detected chord.
+    first_chord = raw_symbols[0] if raw_symbols else None
+    key = _detect_key(chroma.mean(axis=1), first_chord=first_chord)
     diatonic = _diatonic_chords(key)
 
-    # 8. Group beats into measures; detect one chord per measure
-    n_beats = beat_chroma.shape[1]
+    # 10. Second-pass chord detection WITH corrected diatonic bias.
     symbols: list[str] = []
     for bar_start in range(0, n_beats, _BEATS_PER_BAR):
         bar_chroma = beat_chroma[:, bar_start : bar_start + _BEATS_PER_BAR]
         if bar_chroma.shape[1] == 0:
             break
-        measure_chroma = bar_chroma.mean(axis=1)
-        symbols.append(_detect_chord(measure_chroma, diatonic=diatonic))
+        symbols.append(_detect_chord(bar_chroma.mean(axis=1), diatonic=diatonic))
 
-    # 9. Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
+    # 11. Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
     symbols = _smooth_chords(symbols)
 
     chords: list[MeasureChord] = [
         MeasureChord(measure=i + 1, symbol=sym) for i, sym in enumerate(symbols)
     ]
 
-    # 10. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
+    # 12. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
     tempo_us = int(60_000_000 / bpm)
     parsed = ParsedMidi(
         ticks_per_beat=480,
