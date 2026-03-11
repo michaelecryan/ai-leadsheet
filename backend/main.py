@@ -294,14 +294,16 @@ async def subscribe(req: SubscribeRequest) -> dict:
     )
     try:
         with urllib.request.urlopen(resend_req, timeout=10) as resp:
-            if resp.status not in (200, 201):
-                raise HTTPException(status_code=500, detail="Subscription service error.")
+            print(f"[subscribe] Resend response {resp.status} for {req.email}")
     except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace")
+        print(f"[subscribe] Resend HTTP error {exc.code}: {body}")
         # 409 = contact already exists — treat as success
         if exc.code == 409:
             return {"success": True}
-        body = exc.read().decode(errors="replace")
-        print(f"[subscribe] Resend error {exc.code}: {body}")
+        raise HTTPException(status_code=500, detail="Subscription service error.") from exc
+    except Exception as exc:
+        print(f"[subscribe] Unexpected error: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=500, detail="Subscription service error.") from exc
 
     return {"success": True}
