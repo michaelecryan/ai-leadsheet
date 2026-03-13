@@ -152,7 +152,10 @@ async def upload(request: Request, file: UploadFile = File(...)) -> dict:
         if capo and simplified.capo_shape_key:
             capo_hint = f"Capo {capo} and play in {simplified.capo_shape_key} shapes"
 
-        # Convert measure number → seconds so the frontend can drive playback sync
+        # Convert measure number → seconds so the frontend can drive playback sync.
+        # When the librosa chord detector ran, each MeasureChord carries an actual
+        # beat timestamp anchored to the real audio position — use that when available.
+        # Fall back to the BPM-formula for the MIDI path (MeasureChord.time_seconds is None).
         beats_per_measure = parsed.beats_per_measure
         seconds_per_beat = 60.0 / parsed.bpm
 
@@ -160,8 +163,11 @@ async def upload(request: Request, file: UploadFile = File(...)) -> dict:
             {
                 "measure": c.measure,
                 "symbol": c.symbol,
-                # Time in seconds when this chord starts in the audio
-                "time_seconds": round((c.measure - 1) * beats_per_measure * seconds_per_beat, 3),
+                "time_seconds": round(
+                    c.time_seconds if c.time_seconds is not None
+                    else (c.measure - 1) * beats_per_measure * seconds_per_beat,
+                    3,
+                ),
             }
             for c in simplified.chords
         ]
@@ -263,7 +269,11 @@ async def upload_url(req: UrlRequest) -> dict:
         {
             "measure": c.measure,
             "symbol": c.symbol,
-            "time_seconds": round((c.measure - 1) * beats_per_measure * seconds_per_beat, 3),
+            "time_seconds": round(
+                c.time_seconds if c.time_seconds is not None
+                else (c.measure - 1) * beats_per_measure * seconds_per_beat,
+                3,
+            ),
         }
         for c in simplified.chords
     ]

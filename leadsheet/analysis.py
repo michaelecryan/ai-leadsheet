@@ -21,8 +21,9 @@ class GestureKind(str, Enum):
 
 @dataclass
 class MeasureChord:
-    measure: int    # 1-indexed
-    symbol: str     # e.g. "Em", "Cmaj7", "G"
+    measure: int              # 1-indexed
+    symbol: str               # e.g. "Em", "Cmaj7", "G"
+    time_seconds: float | None = None  # actual start time; set by chord_detector, None for MIDI path
 
 
 @dataclass

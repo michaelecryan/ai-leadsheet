@@ -188,19 +188,35 @@ def _disambiguate_relative_key(key: str, raw_symbols: list[str]) -> str:
 
 
 def _smooth_chords(symbols: list[str]) -> list[str]:
-    """Remove isolated single-bar chord anomalies.
+    """Remove isolated single- and two-bar chord anomalies.
 
-    If a bar's chord differs from both its immediate neighbours (which agree
-    with each other), replace it with the neighbour chord. This eliminates
-    flickering caused by one bar of ambiguous chroma without affecting
-    genuine chord changes.
+    Pass 1 (single-bar): if a bar differs from both immediate neighbours and
+    they agree with each other, replace it — pattern: [A, X, A] → [A, A, A].
+
+    Pass 2 (two-bar): if a pair of identical bars is flanked on both sides by
+    the same chord, replace the pair — pattern: [A, X, X, A] → [A, A, A, A].
+
+    This eliminates flickering from ambiguous chroma without affecting genuine
+    chord changes, including Suno v5 tracks where rich harmonics produce noisy
+    1–2 bar anomalies.
     """
     if len(symbols) < 3:
         return symbols
+
+    # Pass 1: single-bar anomalies
     result = list(symbols)
-    for i in range(1, len(symbols) - 1):
+    for i in range(1, len(result) - 1):
         if result[i - 1] == result[i + 1] and result[i] != result[i - 1]:
             result[i] = result[i - 1]
+
+    # Pass 2: two-bar anomalies — [A, X, X, A] → [A, A, A, A]
+    for i in range(1, len(result) - 2):
+        if (result[i - 1] == result[i + 2]
+                and result[i] == result[i + 1]
+                and result[i] != result[i - 1]):
+            result[i] = result[i - 1]
+            result[i + 1] = result[i - 1]
+
     return result
 
 
@@ -262,8 +278,11 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=_SR_LORES, units='frames')
     bpm = float(np.atleast_1d(tempo)[0])
 
-    # HPSS — strip drums before chroma extraction
-    y_harmonic, _ = librosa.effects.hpss(y)
+    # HPSS — strip drums before chroma extraction.
+    # margin=3 gives a more aggressive harmonic/percussive split, suppressing
+    # the dense high-frequency content produced by Suno v5 and similar rich
+    # AI-generated audio that causes noisy chromagram readings.
+    y_harmonic, _ = librosa.effects.hpss(y, margin=3)
     del y  # free raw signal — only harmonic needed from here
     gc.collect()
 
@@ -278,20 +297,28 @@ def detect_chords_librosa(path: Path) -> tuple[ParsedMidi, Analysis]:
     # Beat-synchronous chroma (median per beat interval)
     beat_chroma = librosa.util.sync(chroma, beat_frames, aggregate=np.median)
 
+    # Actual beat timestamps — used to anchor chord highlights to real audio position
+    # instead of computing from a single BPM estimate (which drifts on ambient tracks)
+    beat_times = librosa.frames_to_time(beat_frames, sr=_SR_LORES)
+
     # Chord detection with diatonic bias from stage 1's key
     n_beats = beat_chroma.shape[1]
     symbols: list[str] = []
+    bar_times: list[float] = []
     for bar_start in range(0, n_beats, _BEATS_PER_BAR):
         bar_chroma = beat_chroma[:, bar_start : bar_start + _BEATS_PER_BAR]
         if bar_chroma.shape[1] == 0:
             break
         symbols.append(_detect_chord(bar_chroma.mean(axis=1), diatonic=diatonic))
+        # Use the timestamp of the first beat of this bar
+        bar_times.append(float(beat_times[bar_start]) if bar_start < len(beat_times) else 0.0)
 
-    # Smooth out isolated single-bar anomalies (e.g. F Fm F → F F F)
+    # Smooth out isolated single- and two-bar anomalies (e.g. F Fm Fm F → F F F F)
     symbols = _smooth_chords(symbols)
 
     chords: list[MeasureChord] = [
-        MeasureChord(measure=i + 1, symbol=sym) for i, sym in enumerate(symbols)
+        MeasureChord(measure=i + 1, symbol=sym, time_seconds=t)
+        for i, (sym, t) in enumerate(zip(symbols, bar_times))
     ]
 
     # 12. Synthetic ParsedMidi — carries tempo + time-sig metadata for the backend
