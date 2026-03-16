@@ -169,9 +169,9 @@ function renderLessons(topChords, sectionEl, cardsEl) {
     return `<div class="lesson-card">
       <div class="lesson-card-chord">${sym} chord</div>
       <div class="lesson-provider">JustinGuitar</div>
-      <a class="lesson-link" href="${jg}" target="_blank" rel="noopener">Watch lesson &rarr;</a>
+      <a class="lesson-link" href="${jg}" target="_blank" rel="noopener" onclick="if(typeof saTrack==='function')saTrack('lesson_click',{chord:'${sym}',provider:'justinguitar'})">Watch lesson &rarr;</a>
       <div class="lesson-provider">Marty Music</div>
-      <a class="lesson-link" href="${martyUrl}" target="_blank" rel="noopener">Watch lesson &rarr;</a>
+      <a class="lesson-link" href="${martyUrl}" target="_blank" rel="noopener" onclick="if(typeof saTrack==='function')saTrack('lesson_click',{chord:'${sym}',provider:'marty_music'})">Watch lesson &rarr;</a>
     </div>`;
   }).join("");
 

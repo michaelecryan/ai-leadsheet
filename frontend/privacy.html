@@ -31,30 +31,34 @@
     <h1>Privacy Policy</h1>
     <p class="meta">Last updated: March 2026</p>
 
-    <p>SoloAct ("we", "us") is a music education tool that helps you understand and play the chords in your AI-generated songs. This policy explains what personal data we collect, why, and your rights.</p>
+    <p>SoloAct ("we", "us") is operated by Cryan Advisory Ltd, an Irish company. SoloAct is a music education tool that helps you understand and play the chords in your AI-generated songs. This policy explains what personal data we collect, why, and your rights under GDPR.</p>
 
     <h2>What we collect</h2>
-    <p>The only personal data we collect is your <strong>email address</strong>, and only if you choose to submit it via the "notify me at launch" form. We do not collect names, payment information, or any other personal data at this stage.</p>
-    <p>When you upload an audio file, it is processed server-side to detect chords and is deleted immediately after processing. We do not store your audio files.</p>
+    <p><strong>Account data:</strong> when you create an account, we collect your email address and (if you use Google sign-in) your name as provided by Google. This is stored securely in our authentication system.</p>
+    <p><strong>Payment data:</strong> billing is handled by Stripe. We do not store your card details — Stripe processes and stores payment information on our behalf. We retain a Stripe customer ID and subscription status in our database to manage your access.</p>
+    <p><strong>Chord charts:</strong> if you save a chord chart, we store the analysis result (key, chords, tempo, title) linked to your account. We do not store the audio file — it is processed server-side and deleted immediately.</p>
+    <p><strong>Usage data:</strong> we store a count of analyses in your browser's localStorage to enforce the one free analysis limit for anonymous users. This is not sent to our servers and contains no personal data.</p>
 
     <h2>Why we collect it</h2>
-    <p>We collect your email address solely to notify you when SoloAct officially launches. We will not use it for any other purpose, and we will not share it with third parties for marketing.</p>
+    <p>We collect account and payment data to provide the subscription service and manage your access. We collect saved chart data so you can access your charts from any device. We do not sell your data or use it for advertising.</p>
 
     <h2>Lawful basis (GDPR)</h2>
-    <p>We process your email address on the basis of <strong>consent</strong> — you gave it to us voluntarily by submitting the form. You can withdraw your consent at any time by contacting us.</p>
+    <p>We process your data on the basis of <strong>contract</strong> — processing is necessary to provide the service you have subscribed to. For optional email communications, we rely on <strong>consent</strong>.</p>
 
     <h2>How long we keep it</h2>
-    <p>We will keep your email address until SoloAct launches and for a reasonable period afterwards (up to 12 months). You can ask us to delete it at any time.</p>
+    <p>We retain your account data and saved charts for as long as your account is active. If you delete your account, your data is deleted within 30 days. Payment records may be retained for up to 7 years for legal and tax compliance.</p>
 
     <h2>Third-party processors</h2>
-    <p>We use <strong>Resend</strong> (resend.com) to store contact information and send emails. Resend acts as a data processor on our behalf. You can review their privacy policy at <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">resend.com/legal/privacy-policy</a>.</p>
-    <p>Our application is hosted on <strong>Railway</strong> (railway.app). Audio files you upload are temporarily processed on Railway's infrastructure and immediately deleted.</p>
+    <p><strong>Supabase</strong> (supabase.com) — authentication and database. Stores your account details and saved charts. Data is hosted in the EU. See <a href="https://supabase.com/privacy" target="_blank" rel="noopener">supabase.com/privacy</a>.</p>
+    <p><strong>Stripe</strong> (stripe.com) — payment processing. Handles all billing and card data. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener">stripe.com/privacy</a>.</p>
+    <p><strong>Resend</strong> (resend.com) — transactional email. Used to send sign-in links and account notifications. See <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">resend.com/legal/privacy-policy</a>.</p>
+    <p><strong>Railway</strong> (railway.app) — application hosting. Audio files are temporarily processed on Railway's infrastructure and immediately deleted after analysis.</p>
 
     <h2>Your rights</h2>
-    <p>Under GDPR you have the right to: access the data we hold about you; correct inaccurate data; request erasure ("right to be forgotten"); withdraw consent at any time. To exercise any of these rights, email us at <a href="mailto:info@soloact.app">info@soloact.app</a>.</p>
+    <p>Under GDPR you have the right to: access the data we hold about you; correct inaccurate data; request erasure ("right to be forgotten"); object to processing; withdraw consent at any time. To exercise any of these rights, email us at <a href="mailto:info@soloact.app">info@soloact.app</a>.</p>
 
-    <h2>Cookies</h2>
-    <p>We use a single item in your browser's <code>localStorage</code> to remember that you've already seen the email capture prompt. This is not a tracking cookie — it contains no personal data and is never sent to our servers.</p>
+    <h2>Browser storage</h2>
+    <p>We use <code>localStorage</code> in your browser to track anonymous analysis count and store your authentication session. This data stays on your device and is not shared with third parties.</p>
 
     <h2>Contact</h2>
     <p>For any privacy-related questions: <a href="mailto:info@soloact.app">info@soloact.app</a></p>

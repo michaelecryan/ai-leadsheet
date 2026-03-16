@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SoloAct — Your AI song as your first music lesson</title>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-KJ7P8P38');</script>
+  <!-- End Google Tag Manager -->
+  <!-- Meta Pixel -->
+  <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','2624098191309894');fbq('track','PageView');</script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=2624098191309894&ev=PageView&noscript=1"/></noscript>
+  <!-- End Meta Pixel -->
+  <!-- TikTok Pixel -->
+  <script>!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script");n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};ttq.load('D6S2SLJC77U0SF2NJII0');ttq.page()}(window,document,'ttq');</script>
+  <!-- End TikTok Pixel -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -686,6 +696,38 @@
     .save-confirm a { color: #6c63ff; text-decoration: none; }
     .save-confirm a:hover { text-decoration: underline; }
 
+    /* ── Cookie consent bar ── */
+    #cookie-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a1a;
+      border-top: 1px solid #2a2a2a;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: #888;
+      z-index: 2000;
+    }
+    #cookie-bar a { color: #6c63ff; text-decoration: none; }
+    #cookie-bar a:hover { text-decoration: underline; }
+    .cookie-accept {
+      background: #6c63ff;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 16px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cookie-accept:hover { background: #5a52d5; }
+
     /* ── Auth modal ── */
     #auth-modal {
       position: fixed;
@@ -779,7 +821,11 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/soloact-chords.js"></script>
+<script src="/soloact-analytics.js"></script>
 <body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KJ7P8P38" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
   <header>
     <h1>SoloAct</h1>
     <nav class="header-nav" id="header-nav">
@@ -981,6 +1027,8 @@
 
             if (!hasStripeCustomer) {
               // No Stripe customer yet — send to checkout with 7-day trial.
+              saTrack('signup_complete');
+              saTrack('checkout_started');
               const checkoutRes = await fetch('/api/stripe/create-checkout-session', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${session.access_token}` },
@@ -1079,6 +1127,7 @@
 
     // ── Auth modal ────────────────────────────────────────────────────────────
     function showAuthModal(title, subtitle) {
+      saTrack('signup_start');
       document.getElementById('auth-title').textContent    = title;
       document.getElementById('auth-subtitle').textContent = subtitle;
       document.getElementById('auth-magic-sent').style.display = 'none';
@@ -1095,6 +1144,7 @@
     document.getElementById('auth-skip').addEventListener('click', closeAuthModal);
 
     document.getElementById('auth-google').addEventListener('click', async () => {
+      saTrack('signup_submit', { method: 'google' });
       // Persist chart data across the OAuth redirect (page will reload on return)
       if (lastChartData) {
         sessionStorage.setItem('pendingChart', JSON.stringify({
@@ -1116,6 +1166,7 @@
     async function sendMagicLink() {
       const email = document.getElementById('auth-email').value.trim();
       if (!email) return;
+      saTrack('signup_submit', { method: 'magic_link' });
       const btn = document.getElementById('auth-email-submit');
       btn.disabled = true;
       const { error } = await _sb.auth.signInWithOtp({
@@ -1266,6 +1317,7 @@
         showAuthModal("Loved it? Keep going.", "Start your 7-day free trial — analyse unlimited songs, save your charts, and play along in sync. Then just $5.99/month. Cancel anytime.");
         return;
       }
+      saTrack('upload_started');
       showLoading();
       const formData = new FormData();
       formData.append("file", file);
@@ -1682,5 +1734,21 @@
       <a href="/terms">Terms</a>
     </p>
   </footer>
+
+  <div id="cookie-bar" style="display:none">
+    <span>We use cookies for analytics and personalised ads. <a href="/privacy">Learn more</a></span>
+    <button class="cookie-accept" id="cookie-accept">Got it</button>
+  </div>
+  <script>
+    (function() {
+      if (!localStorage.getItem('cookieConsent')) {
+        document.getElementById('cookie-bar').style.display = 'flex';
+      }
+      document.getElementById('cookie-accept').addEventListener('click', function() {
+        localStorage.setItem('cookieConsent', '1');
+        document.getElementById('cookie-bar').style.display = 'none';
+      });
+    })();
+  </script>
 </body>
 </html>
