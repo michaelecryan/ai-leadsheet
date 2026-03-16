@@ -141,6 +141,15 @@
       color: #444; font-size: 0.75rem; margin: 0 auto;
     }
 
+    /* ── Theory micro-lesson ── */
+    #theory-section { display: none; width: 100%; max-width: 720px; margin-bottom: 32px; }
+    .theory-card { background: #161616; border: 1px solid #252525; border-radius: 14px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
+    .theory-summary { font-size: 1rem; font-weight: 600; color: #f0f0f0; line-height: 1.5; }
+    .theory-fields { display: flex; flex-direction: column; gap: 12px; }
+    .theory-field { display: flex; flex-direction: column; gap: 3px; }
+    .theory-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6c63ff; }
+    .theory-text { font-size: 0.9rem; color: #bbb; line-height: 1.55; }
+
     /* ── Education layer ── */
     #lessons-section { display: none; width: 100%; max-width: 720px; margin-bottom: 32px; }
     .lesson-cards { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
@@ -204,6 +213,10 @@
     <div id="hero-section" class="result-section">
       <div class="hero-heading" id="hero-heading"></div>
       <div id="hero-grid"></div>
+    </div>
+
+    <div id="theory-section" class="result-section">
+      <div class="theory-card" id="theory-card"></div>
     </div>
 
     <div id="lessons-section" class="result-section">
@@ -332,6 +345,9 @@
         </div>`
       ).join('');
 
+      // Theory micro-lesson
+      renderTheory(chart.theory, document.getElementById('theory-section'));
+
       // Lessons
       renderLessons(
         topChords,
@@ -340,6 +356,24 @@
       );
 
       document.getElementById('chart-view').style.display = 'block';
+    }
+
+    function renderTheory(theory, sectionEl) {
+      if (!theory || !theory.progression_summary) { sectionEl.style.display = 'none'; return; }
+      const fields = [];
+      if (theory.emotional_character) fields.push({ label: 'Why it feels that way', text: theory.emotional_character });
+      if (theory.beginner_takeaway)   fields.push({ label: 'What you can do tonight', text: theory.beginner_takeaway });
+      if (theory.theory_note)         fields.push({ label: 'Music theory note', text: theory.theory_note });
+      document.getElementById('theory-card').innerHTML =
+        `<div class="theory-summary">${escHtml(theory.progression_summary)}</div>` +
+        (fields.length ? `<div class="theory-fields">${fields.map(f =>
+          `<div class="theory-field"><div class="theory-label">${escHtml(f.label)}</div><div class="theory-text">${escHtml(f.text)}</div></div>`
+        ).join('')}</div>` : '');
+      sectionEl.style.display = 'block';
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function metaItem(label, value) {

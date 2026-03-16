@@ -91,6 +91,7 @@ class SaveChartRequest(BaseModel):
     time_signature: str | None = None
     scales: list | None = None
     chords: list
+    theory: dict | None = None
 
 
 class UpdateChartRequest(BaseModel):
@@ -443,6 +444,7 @@ async def save_chart(req: SaveChartRequest, user=Depends(get_current_user)) -> d
         "time_signature": req.time_signature,
         "scales": req.scales,
         "chords": req.chords,
+        "theory": req.theory,
     }).execute()
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to save chart.")
