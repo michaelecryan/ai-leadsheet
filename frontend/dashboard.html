@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Charts — SoloAct</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+
+    .header-logo { font-size: 1.4rem; font-weight: 700; text-decoration: none; color: #f0f0f0; }
+
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .nav-btn {
+      background: none;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      color: #888;
+      font-size: 0.82rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .nav-btn:hover { border-color: #555; color: #ccc; }
+    .nav-btn.primary { border-color: #6c63ff; color: #6c63ff; }
+    .nav-btn.primary:hover { background: rgba(108,99,255,0.1); }
+
+    /* ── Trial banner ── */
+    .trial-banner {
+      width: 100%;
+      max-width: 720px;
+      background: rgba(108, 99, 255, 0.1);
+      border: 1px solid rgba(108, 99, 255, 0.25);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 0.875rem;
+      color: #a89fff;
+      margin-bottom: 28px;
+      display: none;
+    }
+
+    /* ── Page title ── */
+    .page-title {
+      width: 100%;
+      max-width: 720px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    /* ── States ── */
+    .state-msg {
+      color: #555;
+      font-size: 0.95rem;
+      text-align: center;
+      margin-top: 60px;
+    }
+    .state-msg a { color: #6c63ff; text-decoration: none; }
+    .state-msg a:hover { text-decoration: underline; }
+
+    /* ── Charts grid ── */
+    #charts-grid {
+      width: 100%;
+      max-width: 720px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card {
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 14px;
+      padding: 20px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.15s;
+    }
+    .chart-card:hover { border-color: #3a3a3a; }
+
+    .chart-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f0f0f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chart-key {
+      font-size: 0.82rem;
+      color: #888;
+    }
+
+    .chart-date {
+      font-size: 0.75rem;
+      color: #444;
+      margin-top: 2px;
+    }
+
+    .chart-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chart-open {
+      flex: 1;
+      background: #6c63ff;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .chart-open:hover { background: #5a52d5; }
+
+    .chart-delete {
+      background: none;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      color: #555;
+      font-size: 0.82rem;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .chart-delete:hover { border-color: #e05566; color: #e05566; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 64px;
+      padding: 24px;
+      text-align: center;
+      color: #444;
+      font-size: 0.8rem;
+    }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #888; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="header-logo">SoloAct</a>
+    <div class="header-actions">
+      <a href="/" class="nav-btn primary">+ New analysis</a>
+      <button class="nav-btn" id="signout-btn">Sign out</button>
+    </div>
+  </header>
+
+  <div class="trial-banner" id="trial-banner"></div>
+
+  <div class="page-title">My charts</div>
+
+  <div id="state-loading" class="state-msg">Loading your charts…</div>
+  <div id="state-empty"   class="state-msg" style="display:none">
+    No saved charts yet. <a href="/">Analyze a song to get started.</a>
+  </div>
+  <div id="state-error"   class="state-msg" style="display:none">
+    Could not load charts. Please try refreshing.
+  </div>
+
+  <div id="charts-grid"></div>
+
+  <footer>
+    <p>
+      Questions? <a href="mailto:info@soloact.app">info@soloact.app</a>
+      &nbsp;·&nbsp;
+      <a href="/privacy">Privacy policy</a>
+      &nbsp;·&nbsp;
+      <a href="/terms">Terms</a>
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL      = 'https://wuylpnzsbfdbrlfqfucz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_LBdVhJMDwcIRF4nv4tw55w_axjKBZDA';
+    const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ── Auth check ────────────────────────────────────────────────────────────
+    async function init() {
+      const { data: { session } } = await _sb.auth.getSession();
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
+      loadProfile(session.user);
+      loadCharts(session.user.id);
+    }
+
+    document.getElementById('signout-btn').addEventListener('click', async () => {
+      await _sb.auth.signOut();
+      window.location.href = '/';
+    });
+
+    // ── Trial banner ──────────────────────────────────────────────────────────
+    async function loadProfile(user) {
+      try {
+        const res = await fetch('/api/charts', {
+          headers: await authHeaders(),
+        });
+        // We load the profile via the charts endpoint; trial info comes from a
+        // separate profile fetch below.
+      } catch (_) {}
+
+      // Fetch trial expiry via a lightweight endpoint (we use the supabase JS
+      // client directly since we have RLS set for select own profile).
+      try {
+        const token = (await _sb.auth.getSession()).data.session.access_token;
+        const res   = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const { profile } = await res.json();
+          if (profile && profile.trial_expires_at) {
+            const expires = new Date(profile.trial_expires_at);
+            const now     = new Date();
+            const daysLeft = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+            const banner   = document.getElementById('trial-banner');
+            if (daysLeft > 0) {
+              banner.textContent = `Free trial — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining.`;
+              banner.style.display = 'block';
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // ── Load charts ───────────────────────────────────────────────────────────
+    async function loadCharts(userId) {
+      try {
+        const token = (await _sb.auth.getSession()).data.session.access_token;
+        const res   = await fetch('/api/charts', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to load charts');
+        const { charts } = await res.json();
+        renderCharts(charts);
+      } catch (err) {
+        document.getElementById('state-loading').style.display = 'none';
+        document.getElementById('state-error').style.display   = 'block';
+      }
+    }
+
+    async function authHeaders() {
+      const session = (await _sb.auth.getSession()).data.session;
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+
+    function renderCharts(charts) {
+      document.getElementById('state-loading').style.display = 'none';
+      const grid = document.getElementById('charts-grid');
+      if (!charts || charts.length === 0) {
+        document.getElementById('state-empty').style.display = 'block';
+        return;
+      }
+      grid.innerHTML = charts.map(c => {
+        const date = new Date(c.created_at).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+        });
+        return `<div class="chart-card" data-id="${c.id}">
+          <div class="chart-title">${escHtml(c.title)}</div>
+          <div class="chart-key">${escHtml(c.key || '—')}</div>
+          <div class="chart-date">${date}</div>
+          <div class="chart-actions">
+            <a class="chart-open" href="/chart/${c.id}">Open</a>
+            <button class="chart-delete" data-id="${c.id}" aria-label="Delete">&#x1f5d1;</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      grid.querySelectorAll('.chart-delete').forEach(btn => {
+        btn.addEventListener('click', () => deleteChart(btn.dataset.id));
+      });
+    }
+
+    async function deleteChart(id) {
+      if (!confirm('Delete this chart? This cannot be undone.')) return;
+      try {
+        const token = (await _sb.auth.getSession()).data.session.access_token;
+        const res   = await fetch(`/api/charts/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          document.querySelector(`.chart-card[data-id="${id}"]`)?.remove();
+          if (!document.querySelector('.chart-card')) {
+            document.getElementById('state-empty').style.display = 'block';
+          }
+        }
+      } catch (_) {}
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

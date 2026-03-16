@@ -18,7 +18,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,12 +27,16 @@ from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from backend.auth import get_admin_client, get_current_user
+from backend.stripe_routes import router as stripe_router
+
 from leadsheet import analysis, midi
 from leadsheet import simplify as simplify_mod
 from leadsheet.analysis import suggest_scales
 from leadsheet.midi import ParsedMidi
 
 app = FastAPI(title="ai-leadsheet API", version="0.1.0")
+app.include_router(stripe_router)
 
 # Rate limiter — keyed by client IP address.
 limiter = Limiter(key_func=get_remote_address)
@@ -75,6 +79,23 @@ class SubscribeRequest(BaseModel):
     email: str
 
 
+class SaveChartRequest(BaseModel):
+    """Request body for saving a chord chart."""
+    title: str
+    key: str | None = None
+    capo: int | None = None
+    capo_hint: str | None = None
+    bpm: float | None = None
+    time_signature: str | None = None
+    scales: list | None = None
+    chords: list
+
+
+class UpdateChartRequest(BaseModel):
+    """Request body for renaming a chart."""
+    title: str
+
+
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -86,6 +107,29 @@ _ALLOWED_EXTENSIONS = _AUDIO_EXTENSIONS | _MIDI_EXTENSIONS
 # stay in sync. A shared constants module is the right long-term fix.
 
 
+def _check_access(user_id: str) -> None:
+    """Raise HTTP 402 if the user's trial has expired and they are not on a paid plan.
+
+    Called before running the analysis pipeline so we don't burn CPU on unpaid requests.
+    """
+    from datetime import datetime, timezone
+    client = get_admin_client()
+    res = client.table("profiles").select("plan, trial_expires_at").eq("id", user_id).single().execute()
+    profile = res.data or {}
+    plan = profile.get("plan", "trial")
+    if plan == "paid":
+        return
+    trial_expires_at = profile.get("trial_expires_at")
+    if trial_expires_at:
+        expires = datetime.fromisoformat(trial_expires_at.replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) < expires:
+            return
+    raise HTTPException(
+        status_code=402,
+        detail="Your free trial has ended. Please upgrade to continue.",
+    )
+
+
 @app.get("/health")
 def health() -> dict:
     """Health check — used by Railway and other deployment platforms to confirm the server is up."""
@@ -94,8 +138,15 @@ def health() -> dict:
 
 @app.post("/upload")
 @limiter.limit("10/hour")
-async def upload(request: Request, file: UploadFile = File(...)) -> dict:
+async def upload(
+    request: Request,
+    file: UploadFile = File(...),
+    authorization: str | None = None,
+) -> dict:
     """Accept an audio or MIDI file, run the pipeline, and return a chord chart as JSON.
+
+    If an Authorization header is present the user must have an active trial or paid plan.
+    Anonymous requests (no token) are allowed — the 1-free-analysis gate is enforced client-side.
 
     Response shape:
       - key: detected key string (e.g. "E minor")
@@ -106,6 +157,19 @@ async def upload(request: Request, file: UploadFile = File(...)) -> dict:
       - time_signature: e.g. "4/4"
       - chords: list of {measure, symbol, time_seconds}
     """
+    # If the request carries a token, enforce the paywall server-side.
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        try:
+            client = get_admin_client()
+            user_resp = client.auth.get_user(token)
+            if user_resp.user:
+                _check_access(str(user_resp.user.id))
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Invalid token — treat as anonymous, let rate limiter handle abuse
     suffix = Path(file.filename).suffix.lower()
     if suffix not in _ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -329,6 +393,110 @@ async def subscribe(req: SubscribeRequest) -> dict:
         raise HTTPException(status_code=500, detail="Subscription service error.") from exc
 
     return {"success": True}
+
+
+@app.get("/api/profile")
+async def get_profile(user=Depends(get_current_user)) -> dict:
+    """Return the authenticated user's profile (trial expiry, analysis count)."""
+    client = get_admin_client()
+    result = client.table("profiles").select("*").eq("id", str(user.id)).execute()
+    if not result.data:
+        return {"profile": None}
+    return {"profile": result.data[0]}
+
+
+@app.post("/api/charts")
+async def save_chart(req: SaveChartRequest, user=Depends(get_current_user)) -> dict:
+    """Save a chord chart for the authenticated user. Returns the saved chart row."""
+    client = get_admin_client()
+    result = client.table("charts").insert({
+        "user_id": str(user.id),
+        "title": req.title,
+        "key": req.key,
+        "capo": req.capo,
+        "capo_hint": req.capo_hint,
+        "bpm": int(req.bpm) if req.bpm is not None else None,
+        "time_signature": req.time_signature,
+        "scales": req.scales,
+        "chords": req.chords,
+    }).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to save chart.")
+    return {"chart": result.data[0]}
+
+
+@app.get("/api/charts")
+async def list_charts(user=Depends(get_current_user)) -> dict:
+    """Return all saved charts for the authenticated user, newest first."""
+    client = get_admin_client()
+    result = (
+        client.table("charts")
+        .select("id, title, key, capo, bpm, time_signature, created_at")
+        .eq("user_id", str(user.id))
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return {"charts": result.data}
+
+
+@app.get("/api/charts/{chart_id}")
+async def get_chart(chart_id: str, user=Depends(get_current_user)) -> dict:
+    """Return a single chart by ID. Returns 404 if it doesn't belong to the user."""
+    client = get_admin_client()
+    result = (
+        client.table("charts")
+        .select("*")
+        .eq("id", chart_id)
+        .eq("user_id", str(user.id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Chart not found.")
+    return {"chart": result.data[0]}
+
+
+@app.patch("/api/charts/{chart_id}")
+async def rename_chart(chart_id: str, req: UpdateChartRequest, user=Depends(get_current_user)) -> dict:
+    """Rename a chart. Returns 404 if the chart doesn't belong to the user."""
+    client = get_admin_client()
+    result = (
+        client.table("charts")
+        .update({"title": req.title})
+        .eq("id", chart_id)
+        .eq("user_id", str(user.id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Chart not found.")
+    return {"chart": result.data[0]}
+
+
+@app.delete("/api/charts/{chart_id}")
+async def delete_chart(chart_id: str, user=Depends(get_current_user)) -> dict:
+    """Delete a chart. Returns 404 if the chart doesn't belong to the user."""
+    client = get_admin_client()
+    result = (
+        client.table("charts")
+        .delete()
+        .eq("id", chart_id)
+        .eq("user_id", str(user.id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Chart not found.")
+    return {"success": True}
+
+
+@app.get("/dashboard")
+def dashboard() -> FileResponse:
+    """Serve the saved charts dashboard."""
+    return FileResponse("frontend/dashboard.html")
+
+
+@app.get("/chart/{chart_id}")
+def chart_view(chart_id: str) -> FileResponse:
+    """Serve the individual chart view page (chart ID read client-side from URL)."""
+    return FileResponse("frontend/chart.html")
 
 
 @app.get("/privacy")

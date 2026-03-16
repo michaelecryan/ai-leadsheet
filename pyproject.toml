@@ -18,5 +18,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "typer>=0.23.2",
     "uvicorn>=0.39.0",
+    "supabase>=2.0.0",
     "yt-dlp>=2024.0.0",
+    "stripe>=10.0.0",
 ]

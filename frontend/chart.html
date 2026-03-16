@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chart — SoloAct</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+    }
+
+    .header-logo { font-size: 1.4rem; font-weight: 700; text-decoration: none; color: #f0f0f0; }
+
+    .back-link {
+      font-size: 0.85rem;
+      color: #666;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .back-link:hover { color: #aaa; }
+
+    .share-btn {
+      background: none;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      color: #888;
+      font-size: 0.82rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .share-btn:hover { border-color: #555; color: #ccc; }
+    .share-btn.copied { border-color: #6c63ff; color: #6c63ff; }
+
+    /* ── Loading / error ── */
+    .state-msg {
+      color: #555;
+      font-size: 0.95rem;
+      margin-top: 60px;
+    }
+
+    /* ── Result layout (mirrors index.html) ── */
+    #chart-view {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .chart-title-display {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 28px;
+      letter-spacing: -0.02em;
+    }
+
+    .result-section { margin-bottom: 20px; }
+    .result-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    .key-display { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; }
+    .key-plain   { font-size: 0.95rem; color: #888; margin-top: 4px; }
+
+    .meta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .meta-item { background: #1a1a1a; border-radius: 10px; padding: 12px 18px; }
+    .meta-item .meta-label  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 4px; }
+    .meta-item .meta-value  { font-size: 1.1rem; font-weight: 600; }
+
+    .capo-banner {
+      background: rgba(108, 99, 255, 0.12);
+      border: 1px solid rgba(108, 99, 255, 0.3);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 0.9rem;
+      color: #a89fff;
+    }
+
+    /* ── Hero chord section ── */
+    .hero-heading { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.01em; }
+    .hero-heading span { color: #6c63ff; }
+
+    #hero-grid {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    #hero-grid::-webkit-scrollbar { height: 4px; }
+    #hero-grid::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 2px; }
+    #hero-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    .hero-chord {
+      flex: 0 0 auto;
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 14px;
+      padding: 12px 14px 10px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .hero-chord-name { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .hero-chord-diagram svg { display: block; margin: 0 auto; }
+    .hero-chord-no-diagram {
+      width: 100px; height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      color: #444; font-size: 0.75rem; margin: 0 auto;
+    }
+
+    /* ── Education layer ── */
+    #lessons-section { display: none; width: 100%; max-width: 720px; margin-bottom: 32px; }
+    .lesson-cards { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+    .lesson-cards::-webkit-scrollbar { display: none; }
+    .lesson-card { flex-shrink: 0; background: #161616; border: 1px solid #252525; border-radius: 12px; padding: 14px 18px; min-width: 200px; }
+    .lesson-card-chord { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; color: #fff; }
+    .lesson-provider { font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .lesson-link { display: inline-block; font-size: 0.82rem; color: #6c63ff; text-decoration: none; margin-bottom: 12px; }
+    .lesson-link:hover { text-decoration: underline; }
+    .lesson-link:last-child { margin-bottom: 0; }
+
+    /* ── Bar-by-bar chord chart ── */
+    .chord-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    .chord-card { background: #1a1a1a; border-radius: 8px; padding: 10px 8px; text-align: center; }
+    .chord-card .measure-num  { font-size: 0.6rem; color: #3a3a3a; margin-bottom: 4px; }
+    .chord-card .chord-symbol { font-size: 1.1rem; font-weight: 700; }
+
+    .scales-list { display: flex; gap: 8px; flex-wrap: wrap; }
+    .scale-tag   { background: #1a1a1a; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; color: #ccc; }
+
+    /* ── Footer ── */
+    footer { margin-top: 64px; padding: 24px; text-align: center; color: #444; font-size: 0.8rem; }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #888; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="header-logo">SoloAct</a>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="/dashboard" class="back-link">&larr; My charts</a>
+      <button class="share-btn" id="share-btn">Copy link</button>
+    </div>
+  </header>
+
+  <div id="state-loading" class="state-msg">Loading chart…</div>
+  <div id="state-error"   class="state-msg" style="display:none">Chart not found.</div>
+
+  <div id="chart-view" style="display:none">
+    <div class="chart-title-display" id="chart-title"></div>
+
+    <div class="result-section">
+      <div class="result-label">Key</div>
+      <div class="key-display" id="key-display"></div>
+      <div class="key-plain"   id="key-plain"></div>
+    </div>
+
+    <div id="capo-section" class="result-section" style="display:none">
+      <div class="capo-banner" id="capo-banner"></div>
+    </div>
+
+    <div id="hero-section" class="result-section">
+      <div class="hero-heading" id="hero-heading"></div>
+      <div id="hero-grid"></div>
+    </div>
+
+    <div id="lessons-section" class="result-section">
+      <div class="result-label">Learn these chords</div>
+      <div class="lesson-cards" id="lesson-cards"></div>
+    </div>
+
+    <div class="result-section">
+      <div class="meta-row" id="meta-row"></div>
+    </div>
+
+    <div id="scales-section" class="result-section" style="display:none">
+      <div class="result-label">Scales to solo over this</div>
+      <div class="scales-list" id="scales-list"></div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-label">Full progression — bar by bar</div>
+      <div class="chord-grid" id="chord-grid"></div>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      Questions? <a href="mailto:info@soloact.app">info@soloact.app</a>
+      &nbsp;·&nbsp;
+      <a href="/privacy">Privacy policy</a>
+      &nbsp;·&nbsp;
+      <a href="/terms">Terms</a>
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/soloact-chords.js"></script>
+  <script>
+    const SUPABASE_URL      = 'https://wuylpnzsbfdbrlfqfucz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_LBdVhJMDwcIRF4nv4tw55w_axjKBZDA';
+    const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ── Read chart ID from URL path (/chart/{id}) ─────────────────────────────
+    const chartId = window.location.pathname.split('/').pop();
+
+    async function init() {
+      const { data: { session } } = await _sb.auth.getSession();
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
+      loadChart(session.access_token);
+    }
+
+    async function loadChart(token) {
+      try {
+        const res = await fetch(`/api/charts/${chartId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Not found');
+        const { chart } = await res.json();
+        renderChart(chart);
+      } catch (_) {
+        document.getElementById('state-loading').style.display = 'none';
+        document.getElementById('state-error').style.display   = 'block';
+      }
+    }
+
+    function renderChart(chart) {
+      document.getElementById('state-loading').style.display = 'none';
+
+      // Title
+      document.getElementById('chart-title').textContent = chart.title;
+      document.title = `${chart.title} — SoloAct`;
+
+      // Key
+      document.getElementById('key-display').textContent = chart.key || '—';
+      document.getElementById('key-plain').textContent   = chart.key ? plainEnglishKey(chart.key) : '';
+
+      // Capo
+      if (chart.capo_hint) {
+        document.getElementById('capo-banner').textContent = '\uD83C\uDFB8 Tip: ' + chart.capo_hint;
+        document.getElementById('capo-section').style.display = '';
+      }
+
+      // Hero chords
+      const counts = {};
+      chart.chords.forEach(c => { counts[c.symbol] = (counts[c.symbol] || 0) + 1; });
+      const topChords = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([sym]) => sym);
+
+      const n = topChords.length;
+      document.getElementById('hero-heading').innerHTML =
+        `Your song in <span>${n} chord${n !== 1 ? 's' : ''}</span>`;
+
+      document.getElementById('hero-grid').innerHTML = topChords.map(sym => {
+        const svg = buildChordSvg(sym);
+        return `<div class="hero-chord">
+          <div class="hero-chord-name">${sym}</div>
+          <div class="hero-chord-diagram">
+            ${svg || '<div class="hero-chord-no-diagram">\u2013</div>'}
+          </div>
+        </div>`;
+      }).join('');
+
+      // Meta
+      const metaRow = document.getElementById('meta-row');
+      if (chart.bpm) {
+        metaRow.appendChild(metaItem('Tempo', Math.round(chart.bpm) + ' BPM'));
+      }
+      if (chart.time_signature) {
+        metaRow.appendChild(metaItem('Time signature', chart.time_signature));
+      }
+
+      // Scales
+      if (chart.scales && chart.scales.length) {
+        document.getElementById('scales-list').innerHTML =
+          chart.scales.map(s => `<span class="scale-tag">${s}</span>`).join('');
+        document.getElementById('scales-section').style.display = '';
+      }
+
+      // Chord grid
+      document.getElementById('chord-grid').innerHTML = chart.chords.map(c =>
+        `<div class="chord-card">
+          <div class="measure-num">Bar ${c.measure}</div>
+          <div class="chord-symbol">${c.symbol}</div>
+        </div>`
+      ).join('');
+
+      // Lessons
+      renderLessons(
+        topChords,
+        document.getElementById('lessons-section'),
+        document.getElementById('lesson-cards')
+      );
+
+      document.getElementById('chart-view').style.display = 'block';
+    }
+
+    function metaItem(label, value) {
+      const el = document.createElement('div');
+      el.className = 'meta-item';
+      el.innerHTML = `<div class="meta-label">${label}</div><div class="meta-value">${value}</div>`;
+      return el;
+    }
+
+    // ── Share button ──────────────────────────────────────────────────────────
+    document.getElementById('share-btn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(window.location.href);
+      const btn = document.getElementById('share-btn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy link'; btn.classList.remove('copied'); }, 2000);
+    });
+
+    init();
+  </script>
+</body>
+</html>

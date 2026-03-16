@@ -85,6 +85,7 @@ The user is a non-musician. They do not know what a chord progression is. They d
   3. **Diatonic key bias** — detected key's diatonic chords get +0.06 cosine score bonus to resolve major/minor ambiguity (e.g. F vs Fm)
   4. **Temporal smoothing** (`_smooth_chords`) replaces isolated single-bar anomalies with neighbour chord
   5. **Two-pass first-chord key correction** — bias-free first pass detects chords; first chord passed to `_detect_key()` which scans top-8 K-S candidates for one whose tonic matches; resolves the relative-key false-positive bug (K-S returning "F major" for songs in A minor) that caused Gm hallucinations
+- **Phase 5: User accounts + chart storage** — Supabase Auth (Google OAuth + magic link), Postgres chart storage, Row Level Security, auto-trigger for profile creation with 7-day trial. New endpoints: `GET/POST /api/charts`, `GET/PATCH/DELETE /api/charts/{id}`, `GET /api/profile`. New pages: `/dashboard` (saved charts list), `/chart/{id}` (individual chart view with share link). Anonymous first analysis allowed; forced sign-up gate after 1 free analysis. `sessionStorage` persists chart data across OAuth redirect for auto-save on return. Shared JS extracted to `frontend/soloact-chords.js` (CHORD_SHAPES, buildChordSvg, LESSON_LOOKUP, renderLessons, plainEnglishKey). BPM cast to `int` before Postgres insert. After save, redirects to `/dashboard`.
 
 ### 🔄 Active Development
 - Suno API integration exploration (user requested — not yet started)
@@ -92,7 +93,6 @@ The user is a non-musician. They do not know what a chord progression is. They d
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
-- Accounts/auth (Phase 5)
 - Payment/paywall (Phase 6)
 - `--for guitar|piano` CLI flag (future phase — guitar only for V1)
 - Melody tabs / fretboard mapper (Phase 8)
@@ -316,7 +316,7 @@ V1 is complete when ALL of these are true:
 | 3 | Playback sync. Chords highlight in real time during audio playback. | ✅ Done |
 | 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. Retention mechanism — do not defer past Phase 3. | ✅ Done |
 | 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
-| 5 | User accounts + chart storage. Auth. Saved charts dashboard. | Not started |
+| 5 | User accounts + chart storage. Auth. Saved charts dashboard. | ✅ Done |
 | 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
 | 7 | PDF export. Formatting polish. | Not started |
 | 8 | Melody tabs (fretboard mapper). Post-validation only. | Not started |
