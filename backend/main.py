@@ -33,6 +33,8 @@ from backend.stripe_routes import router as stripe_router
 from leadsheet import analysis, midi
 from leadsheet import simplify as simplify_mod
 from leadsheet.analysis import suggest_scales
+from leadsheet.theory import analyse_progression
+from leadsheet.claude_lesson import generate_lesson
 from leadsheet.midi import ParsedMidi
 
 app = FastAPI(title="ai-leadsheet API", version="0.1.0")
@@ -244,6 +246,16 @@ async def upload(
         if tmp_path is not None:
             tmp_path.unlink(missing_ok=True)
 
+    time_sig = f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}"
+    theory_data = analyse_progression(key, [c["symbol"] for c in chords])
+    theory_lesson = generate_lesson(
+        key=key,
+        unique_chords=theory_data["unique_chords"],
+        roman_numerals=theory_data["roman_numerals"],
+        bpm=parsed.bpm,
+        time_signature=time_sig,
+    )
+
     return {
         "status": "ok",
         "filename": file.filename,
@@ -252,8 +264,9 @@ async def upload(
         "capo_hint": capo_hint,
         "scales": scales,
         "bpm": round(parsed.bpm, 1),
-        "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
+        "time_signature": time_sig,
         "chords": chords,
+        "theory": theory_lesson,
     }
 
 
@@ -341,6 +354,16 @@ async def upload_url(req: UrlRequest) -> dict:
         }
         for c in simplified.chords
     ]
+    time_sig = f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}"
+    theory_data = analyse_progression(key, [c["symbol"] for c in chords])
+    theory_lesson = generate_lesson(
+        key=key,
+        unique_chords=theory_data["unique_chords"],
+        roman_numerals=theory_data["roman_numerals"],
+        bpm=parsed.bpm,
+        time_signature=time_sig,
+    )
+
     return {
         "status": "ok",
         "filename": title,
@@ -351,8 +374,9 @@ async def upload_url(req: UrlRequest) -> dict:
         "capo_hint": capo_hint,
         "scales": scales,
         "bpm": round(parsed.bpm, 1),
-        "time_signature": f"{parsed.time_sig_numerator}/{parsed.time_sig_denominator}",
+        "time_signature": time_sig,
         "chords": chords,
+        "theory": theory_lesson,
     }
 
 
