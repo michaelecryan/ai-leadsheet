@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Settings — SoloAct</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-KJ7P8P38');</script>
+  <!-- End Google Tag Manager -->
+  <style>
+    :root {
+      --bg: #0A0A0B;
+      --surface: #141416;
+      --surface-raised: #1C1C1F;
+      --border: #2A2A2E;
+      --border-hover: #3A3A40;
+      --accent: #3EDB8C;
+      --accent-hover: #32C47A;
+      --accent-muted: rgba(62, 219, 140, 0.12);
+      --accent-text: #5AEEA0;
+      --text: #EDEDEF;
+      --text-secondary: #8B8B92;
+      --text-muted: #55555C;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+
+    .header-logo { font-size: 1.4rem; font-weight: 700; text-decoration: none; color: var(--text); }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .nav-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      padding: 7px 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .nav-btn:hover { border-color: var(--border-hover); color: var(--text); }
+
+    .page-title {
+      width: 100%;
+      max-width: 560px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+
+    /* ── Sections ── */
+    .settings-section {
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+    }
+    .field-row + .field-row {
+      border-top: 1px solid var(--border);
+    }
+
+    .field-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .field-value {
+      font-size: 0.875rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .plan-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .plan-badge.trial {
+      background: var(--accent-muted);
+      color: var(--accent-text);
+    }
+    .plan-badge.paid {
+      background: var(--accent);
+      color: #fff;
+    }
+    .plan-badge.free {
+      background: var(--surface-raised);
+      color: var(--text-muted);
+    }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      font-family: var(--font-ui);
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-ghost {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-ghost:hover { border-color: var(--border-hover); color: var(--text); }
+
+    .btn-danger {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    .hidden { display: none; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 64px;
+      padding: 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KJ7P8P38" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <header>
+    <a href="/" class="header-logo">SoloAct</a>
+    <div class="header-actions">
+      <a href="/dashboard" class="nav-btn">My charts</a>
+    </div>
+  </header>
+
+  <div class="page-title">Account</div>
+
+  <!-- Account info -->
+  <div class="settings-section">
+    <div class="section-label">Account</div>
+    <div class="field-row">
+      <span class="field-label">Email</span>
+      <span class="field-value" id="user-email">Loading...</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Signed in via</span>
+      <span class="field-value" id="user-provider">—</span>
+    </div>
+  </div>
+
+  <!-- Subscription -->
+  <div class="settings-section">
+    <div class="section-label">Subscription</div>
+    <div class="field-row">
+      <span class="field-label">Plan</span>
+      <span class="field-value" id="plan-status"><span class="plan-badge free">Loading...</span></span>
+    </div>
+    <div class="field-row hidden" id="trial-row">
+      <span class="field-label">Trial ends</span>
+      <span class="field-value" id="trial-expires">—</span>
+    </div>
+    <div class="btn-row" id="billing-actions">
+      <!-- Populated by JS based on plan status -->
+    </div>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="settings-section">
+    <div class="section-label">Session</div>
+    <div class="btn-row">
+      <button class="btn btn-danger" id="signout-btn">Sign out</button>
+    </div>
+  </div>
+
+  <footer>
+    <p>
+      Questions? <a href="mailto:info@soloact.app">info@soloact.app</a>
+      &nbsp;&middot;&nbsp;
+      <a href="/privacy">Privacy policy</a>
+      &nbsp;&middot;&nbsp;
+      <a href="/terms">Terms</a>
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL      = 'https://wuylpnzsbfdbrlfqfucz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_LBdVhJMDwcIRF4nv4tw55w_axjKBZDA';
+    const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function getToken() {
+      const { data: { session } } = await _sb.auth.getSession();
+      return session?.access_token;
+    }
+
+    async function init() {
+      const { data: { session } } = await _sb.auth.getSession();
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
+
+      const user = session.user;
+
+      // Email
+      document.getElementById('user-email').textContent = user.email || '—';
+
+      // Provider
+      const provider = user.app_metadata?.provider || 'email';
+      const providerLabel = provider === 'google' ? 'Google' : provider === 'email' ? 'Magic link' : provider;
+      document.getElementById('user-provider').textContent = providerLabel;
+
+      // Profile / plan
+      try {
+        const token = session.access_token;
+        const res = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const { profile } = await res.json();
+          renderPlan(profile, token);
+        }
+      } catch (_) {
+        document.getElementById('plan-status').innerHTML = '<span class="plan-badge free">Unknown</span>';
+      }
+    }
+
+    function renderPlan(profile, token) {
+      const statusEl  = document.getElementById('plan-status');
+      const trialRow  = document.getElementById('trial-row');
+      const actionsEl = document.getElementById('billing-actions');
+
+      if (!profile) {
+        statusEl.innerHTML = '<span class="plan-badge free">Free</span>';
+        actionsEl.innerHTML = '<a href="/" class="btn btn-primary">Start free trial</a>';
+        return;
+      }
+
+      const plan = profile.plan || 'free';
+      const trialExpires = profile.trial_expires_at ? new Date(profile.trial_expires_at) : null;
+      const now = new Date();
+      const hasStripe = !!profile.stripe_customer_id;
+
+      if (plan === 'paid') {
+        statusEl.innerHTML = '<span class="plan-badge paid">Pro</span>';
+        actionsEl.innerHTML = '<button class="btn btn-ghost" id="manage-billing-btn">Manage billing</button>';
+      } else if (trialExpires && trialExpires > now) {
+        const daysLeft = Math.ceil((trialExpires - now) / (1000 * 60 * 60 * 24));
+        statusEl.innerHTML = '<span class="plan-badge trial">Free trial</span>';
+        trialRow.classList.remove('hidden');
+        document.getElementById('trial-expires').textContent =
+          trialExpires.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+          ` (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`;
+        if (hasStripe) {
+          actionsEl.innerHTML = '<button class="btn btn-ghost" id="manage-billing-btn">Manage billing</button>';
+        }
+      } else {
+        statusEl.innerHTML = '<span class="plan-badge free">Free</span>';
+        actionsEl.innerHTML = '<a href="/" class="btn btn-primary">Upgrade to Pro</a>';
+      }
+
+      // Wire up manage billing button
+      const manageBtn = document.getElementById('manage-billing-btn');
+      if (manageBtn) {
+        manageBtn.addEventListener('click', async () => {
+          manageBtn.textContent = 'Opening...';
+          manageBtn.disabled = true;
+          try {
+            const res = await fetch('/api/stripe/create-portal-session', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+              const { url } = await res.json();
+              window.location.href = url;
+            } else {
+              manageBtn.textContent = 'Error — try again';
+              manageBtn.disabled = false;
+            }
+          } catch (_) {
+            manageBtn.textContent = 'Error — try again';
+            manageBtn.disabled = false;
+          }
+        });
+      }
+    }
+
+    // Sign out
+    document.getElementById('signout-btn').addEventListener('click', async () => {
+      await _sb.auth.signOut();
+      window.location.href = '/';
+    });
+
+    init();
+  </script>
+
+  <div id="cookie-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface-raised);border-top:1px solid var(--border);padding:12px 24px;align-items:center;justify-content:center;gap:16px;font-size:0.8rem;color:var(--text-secondary);z-index:2000">
+    <span>We use cookies for analytics and personalised ads. <a href="/privacy" style="color:var(--accent)">Learn more</a></span>
+    <button onclick="localStorage.setItem('cookieConsent','1');this.parentElement.style.display='none'" style="background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:0.8rem;font-weight:600;padding:6px 16px;cursor:pointer">Got it</button>
+  </div>
+  <script>(function(){if(!localStorage.getItem('cookieConsent'))document.getElementById('cookie-bar').style.display='flex';})();</script>
+</body>
+</html>

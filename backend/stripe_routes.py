@@ -68,6 +68,29 @@ async def create_checkout_session(user=Depends(get_current_user)) -> dict:
     return {"url": session.url}
 
 
+@router.post("/api/stripe/create-portal-session")
+async def create_portal_session(user=Depends(get_current_user)) -> dict:
+    """Create a Stripe Customer Portal session for subscription management.
+
+    Returns a URL to the Stripe-hosted portal where users can cancel,
+    change payment method, or view invoices.
+    """
+    client = get_admin_client()
+    profile_res = client.table("profiles").select("stripe_customer_id").eq("id", str(user.id)).single().execute()
+    profile = profile_res.data or {}
+    customer_id: str | None = profile.get("stripe_customer_id")
+
+    if not customer_id:
+        raise HTTPException(status_code=400, detail="No billing account found.")
+
+    portal_session = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=os.getenv("APP_URL", "https://soloact.app") + "/settings",
+    )
+
+    return {"url": portal_session.url}
+
+
 @router.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request) -> JSONResponse:
     """Handle incoming Stripe webhook events.

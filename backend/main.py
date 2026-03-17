@@ -547,6 +547,12 @@ def chart_view(chart_id: str) -> FileResponse:
     return FileResponse("frontend/chart.html")
 
 
+@app.get("/settings")
+def settings_page() -> FileResponse:
+    """Serve the account settings page."""
+    return FileResponse("frontend/settings.html")
+
+
 @app.get("/privacy")
 def privacy_policy() -> FileResponse:
     """Serve the privacy policy page."""

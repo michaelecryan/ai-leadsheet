@@ -1034,6 +1034,7 @@
     <h1>SoloAct</h1>
     <nav class="header-nav" id="header-nav">
       <a href="/dashboard" class="nav-btn primary" id="nav-dashboard" style="display:none">My charts</a>
+      <a href="/settings" class="nav-btn" id="nav-account" style="display:none" title="Account settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg></a>
       <button class="nav-btn" id="nav-signin" style="display:none">Sign in</button>
     </nav>
     <p class="hero-tagline">Your song is more playable<br>than you think.</p>
@@ -1287,12 +1288,15 @@
 
     function updateAuthNav() {
       const navDashboard = document.getElementById('nav-dashboard');
+      const navAccount   = document.getElementById('nav-account');
       const navSignin    = document.getElementById('nav-signin');
       if (currentUser) {
         navDashboard.style.display = 'inline-flex';
+        navAccount.style.display   = 'inline-flex';
         navSignin.style.display    = 'none';
       } else {
         navDashboard.style.display = 'none';
+        navAccount.style.display   = 'none';
         navSignin.style.display    = 'inline-block';
       }
     }

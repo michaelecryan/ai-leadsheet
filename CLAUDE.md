@@ -112,6 +112,7 @@ The user is a non-musician. They do not know what a chord progression is. They d
 ### 🔄 Active Development
 - Phase 4 chord quality: bar-by-bar grid gets stuck on one chord (GitHub issue #48) — launch blocker
 - Landing page preview video — needs valid MP4 screen recording (current file is corrupted/HTML)
+- **User settings page** — built (`frontend/settings.html`, `/settings` route). Shows email, auth provider, plan status (Free/Trial/Pro), trial expiry. "Manage billing" button opens Stripe Customer Portal for subscription cancellation/payment changes. Sign out button. Nav icon (person silhouette) added to index.html and dashboard.html header when logged in.
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
