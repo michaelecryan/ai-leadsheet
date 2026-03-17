@@ -168,36 +168,6 @@
     #drop-zone .file-hint { margin-top: 12px; font-size: 0.875rem; color: var(--text-muted); }
     #file-input { display: none; }
 
-    /* ── Hero chord preview ── */
-    .hero-preview {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 28px;
-      flex-wrap: wrap;
-    }
-    .hero-preview .preview-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 10px 14px 8px;
-      text-align: center;
-      min-width: 90px;
-    }
-    .hero-preview .preview-card-name {
-      font-family: var(--font-mono);
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    .hero-preview .preview-card svg {
-      display: block;
-      margin: 0 auto;
-      transform: scale(0.72);
-      transform-origin: top center;
-    }
-
     /* ── Pitch + CTAs ── */
     #output-preview {
       text-align: center;
@@ -1109,19 +1079,6 @@
     <span class="f-star">&#x2726;</span>&nbsp;Plain-English theory
   </div>
 
-  <!-- Hero chord preview — show the product above the fold -->
-  <div class="hero-preview" id="hero-preview"></div>
-  <script>
-  (function() {
-    const chords = ["Am", "G", "F", "C"];
-    const container = document.getElementById("hero-preview");
-    container.innerHTML = chords.map(sym => {
-      const svg = buildChordSvg(sym);
-      return '<div class="preview-card"><div class="preview-card-name">' + sym + '</div>' + (svg || '') + '</div>';
-    }).join("");
-  })();
-  </script>
-
   <!-- Chord marquee — auto-scrolling strip of chord diagrams -->
   <div class="chord-marquee" id="chord-marquee">
     <div class="chord-marquee-track" id="chord-marquee-track"></div>
@@ -1534,7 +1491,6 @@
     // ── DOM refs ─────────────────────────────────────────────────────────────
     const dropZone      = document.getElementById("drop-zone");
     const featureStrip  = document.getElementById("feature-strip");
-    const heroPreview   = document.getElementById("hero-preview");
     const chordMarquee  = document.getElementById("chord-marquee");
     const outputPreview = document.getElementById("output-preview");
     const fileInput   = document.getElementById("file-input");
@@ -1709,7 +1665,6 @@
     function showResult(data, file) {
       hideAll();
       featureStrip.style.display  = "none";
-      heroPreview.style.display   = "none";
       chordMarquee.style.display  = "none";
       outputPreview.style.display = "none";
 
@@ -2048,7 +2003,6 @@
       hideAll();
       dropZone.style.display      = "none";
       featureStrip.style.display  = "none";
-      heroPreview.style.display   = "none";
       chordMarquee.style.display  = "none";
       outputPreview.style.display = "none";
       const uf = document.getElementById("url-form");
@@ -2122,7 +2076,6 @@
       if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       dropZone.style.display      = "block";
       featureStrip.style.display  = "";
-      heroPreview.style.display   = "";
       chordMarquee.style.display  = "";
       outputPreview.style.display = "";
       const uf2 = document.getElementById("url-form");
