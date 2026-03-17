@@ -6,17 +6,41 @@ render the chart and drive playback sync.
 
 Run locally:
     uv run uvicorn backend.main:app --reload
+
+Environment variables
+---------------------
+Required:
+  SUPABASE_URL              Supabase project URL
+  SUPABASE_SERVICE_KEY      Supabase service role key (admin)
+  STRIPE_SECRET_KEY         Stripe secret key
+  STRIPE_PRICE_ID           Stripe recurring Price ID (price_...)
+  STRIPE_WEBHOOK_SECRET     Stripe webhook signing secret
+  RESEND_API_KEY            Resend API key (full access)
+  RESEND_AUDIENCE_ID        Resend audience ID for email capture
+  ANTHROPIC_API_KEY         Anthropic API key for Claude theory lessons
+
+Optional:
+  YOUTUBE_COOKIES_B64       Base64-encoded cookies.txt for yt-dlp (bypasses some bot checks)
+  YT_MP3_GO_URL             yt-mp3-go fallback service URL, e.g. https://yt-mp3-go.example.com
+                            API: GET {YT_MP3_GO_URL}/api/mp3?id={VIDEO_ID} → audio stream
+                            Used when yt-dlp fails after retries on Railway's IP range.
+  CHORD_DETECTOR            Set to "basic_pitch" to use Basic Pitch instead of librosa
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import tempfile
+import time
 import urllib.request
+import uuid
 from pathlib import Path
+
+logger = logging.getLogger("soloact")
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,6 +97,11 @@ app.add_middleware(
 
 class UrlRequest(BaseModel):
     """Request body for URL-based audio ingestion."""
+    url: str
+
+
+class UrlValidateRequest(BaseModel):
+    """Request body for YouTube URL validation."""
     url: str
 
 
@@ -271,69 +300,206 @@ async def upload(
     }
 
 
+# ── YouTube extraction helpers ────────────────────────────────────────────────
+
+_YT_VIDEO_ID_RE = re.compile(
+    r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})"
+)
+
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+]
+
+_YT_DOWNLOAD_RETRIES = 3
+_YT_RETRY_BACKOFF_S = 2
+
+
+def _pick_user_agent(attempt: int) -> str:
+    """Rotate through user agents deterministically by attempt number."""
+    return _USER_AGENTS[attempt % len(_USER_AGENTS)]
+
+
+def _extract_video_id(url: str) -> str | None:
+    """Extract an 11-character YouTube video ID from any standard YouTube URL format."""
+    m = _YT_VIDEO_ID_RE.search(url)
+    return m.group(1) if m else None
+
+
+def _ytdlp_download(url: str, out_path: Path, cookies_path: Path | None) -> dict:
+    """Run yt-dlp synchronously. Returns the info dict. Raises on failure.
+
+    Designed to be called via asyncio.to_thread — does not touch the event loop.
+    """
+    import yt_dlp
+
+    attempt = 0
+    last_exc: Exception | None = None
+
+    while attempt < _YT_DOWNLOAD_RETRIES:
+        ua = _pick_user_agent(attempt)
+        logger.info("[yt-dlp] attempt %d/%d url=%s ua=%s", attempt + 1, _YT_DOWNLOAD_RETRIES, url, ua[:40])
+
+        ydl_opts: dict = {
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "outtmpl": str(out_path / "%(id)s.%(ext)s"),
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+            "socket_timeout": 30,
+            "geo_bypass": True,
+            "geo_bypass_country": "IE",
+            "http_headers": {"User-Agent": ua},
+            # Extract to mp3 via ffmpeg postprocessor
+            "postprocessors": [{
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "0",
+            }],
+        }
+
+        if cookies_path is not None:
+            ydl_opts["cookiefile"] = str(cookies_path)
+
+        errors: list[str] = []
+
+        class _ErrLogger:
+            def debug(self, msg: str) -> None: pass
+            def warning(self, msg: str) -> None: errors.append(f"WARN: {msg}")
+            def error(self, msg: str) -> None: errors.append(f"ERR: {msg}")
+
+        ydl_opts["logger"] = _ErrLogger()
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+            logger.info("[yt-dlp] success on attempt %d", attempt + 1)
+            return info
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "[yt-dlp] attempt %d failed: %s\nyt-dlp output:\n%s",
+                attempt + 1, exc, "\n".join(errors) or "(none)",
+            )
+            attempt += 1
+            if attempt < _YT_DOWNLOAD_RETRIES:
+                time.sleep(_YT_RETRY_BACKOFF_S)
+
+    raise RuntimeError(f"yt-dlp failed after {_YT_DOWNLOAD_RETRIES} attempts: {last_exc}")
+
+
+def _ytmp3go_download(video_id: str, out_path: Path) -> Path:
+    """Download audio via the yt-mp3-go fallback service.
+
+    Streams the response to a temp .mp3 file. Returns the path.
+    Raises if YT_MP3_GO_URL is not set or the request fails.
+    """
+    base_url = os.getenv("YT_MP3_GO_URL", "").rstrip("/")
+    if not base_url:
+        raise RuntimeError("YT_MP3_GO_URL not configured — no fallback available")
+
+    api_url = f"{base_url}/api/mp3?id={video_id}"
+    logger.info("[yt-mp3-go] fetching %s", api_url)
+
+    dest = out_path / f"{uuid.uuid4().hex}.mp3"
+    req = urllib.request.Request(api_url, headers={"User-Agent": _USER_AGENTS[0]})
+    with urllib.request.urlopen(req, timeout=90) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"yt-mp3-go returned HTTP {resp.status}")
+        dest.write_bytes(resp.read())
+
+    logger.info("[yt-mp3-go] downloaded %d bytes to %s", dest.stat().st_size, dest.name)
+    return dest
+
+
 @app.post("/upload-url")
 async def upload_url(req: UrlRequest) -> dict:
     """Download audio from a YouTube URL, run the pipeline, and return a chord chart.
 
-    Uses yt-dlp to fetch the best available audio stream, converts to MP3, then
-    passes through the same librosa pipeline as a file upload. Returns the same
-    JSON shape as /upload, plus video_id and title for the frontend YouTube embed.
+    Extraction strategy (in order):
+    1. yt-dlp with hardened config (user-agent rotation, geo-bypass, 3 retries)
+    2. yt-mp3-go fallback service (if YT_MP3_GO_URL env var is set)
+    3. Clear error message if both fail
+
+    Returns the same JSON shape as /upload, plus video_id and title for the
+    frontend YouTube embed/playback sync.
     """
     from urllib.parse import urlparse as _urlparse
+    import base64
 
-    _ALLOWED_URL_HOSTS = {"www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com", "suno.com", "www.suno.com"}
+    _ALLOWED_URL_HOSTS = {"www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"}
     _parsed_url = _urlparse(req.url)
     if _parsed_url.hostname not in _ALLOWED_URL_HOSTS:
         raise HTTPException(status_code=400, detail="Only YouTube URLs are supported.")
 
-    import yt_dlp
+    video_id = _extract_video_id(req.url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="Could not parse a YouTube video ID from that URL.")
+
+    tmp_dir_obj = tempfile.TemporaryDirectory()
+    tmp_dir = Path(tmp_dir_obj.name)
+    audio_path: Path | None = None
+    title = "YouTube track"
 
     try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ydl_opts = {
-                # Prefer m4a (no ffmpeg needed); fall back to any audio
-                "format": "bestaudio[ext=m4a]/bestaudio/best",
-                "outtmpl": str(Path(tmp_dir) / "%(id)s.%(ext)s"),
-                "quiet": True,
-                "no_warnings": True,
-            }
+        # Write cookies file once (shared across yt-dlp attempts)
+        cookies_path: Path | None = None
+        cookies_b64 = os.getenv("YOUTUBE_COOKIES_B64")
+        if cookies_b64:
+            cookies_path = tmp_dir / "cookies.txt"
+            cookies_path.write_bytes(base64.b64decode(cookies_b64))
 
-            # Cookie support to bypass bot-detection.
-            # On Railway: set YOUTUBE_COOKIES_B64 to a base64-encoded cookies.txt
-            # Locally: reads cookies from Chrome (or Firefox if Chrome fails)
-            import base64
-            cookies_b64 = os.getenv("YOUTUBE_COOKIES_B64")
-            if cookies_b64:
-                cookies_path = Path(tmp_dir) / "cookies.txt"
-                cookies_path.write_bytes(base64.b64decode(cookies_b64))
-                ydl_opts["cookiefile"] = str(cookies_path)
-            else:
-                # Local dev: pull cookies from the browser
-                ydl_opts["cookiesfrombrowser"] = ("chrome",)
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(req.url, download=True)
-
-            video_id = info.get("id", "")
+        # ── Attempt 1: yt-dlp ────────────────────────────────────────────────
+        ytdlp_ok = False
+        try:
+            info = await asyncio.to_thread(_ytdlp_download, req.url, tmp_dir, cookies_path)
             title = info.get("title", "YouTube track")
+            # After FFmpegExtractAudio, file is <id>.mp3
+            mp3_path = tmp_dir / f"{video_id}.mp3"
+            if mp3_path.exists():
+                audio_path = mp3_path
+            else:
+                # Fallback: find any audio file in tmp_dir
+                candidates = [f for f in tmp_dir.iterdir() if f.suffix.lower() in _AUDIO_EXTENSIONS]
+                if candidates:
+                    audio_path = candidates[0]
+            if audio_path:
+                ytdlp_ok = True
+            else:
+                logger.warning("[yt-dlp] no audio file found after extraction")
+        except Exception as exc:
+            logger.warning("[yt-dlp] all retries exhausted: %s", exc)
 
-            # Find whichever audio file yt-dlp downloaded
-            audio_files = [
-                f for f in Path(tmp_dir).iterdir()
-                if f.suffix.lower() in _AUDIO_EXTENSIONS
-            ]
-            if not audio_files:
-                raise ValueError("No supported audio file found after download")
-            audio_path = audio_files[0]
-            suffix = audio_path.suffix.lower()
+        # ── Attempt 2: yt-mp3-go fallback ───────────────────────────────────
+        if not ytdlp_ok:
+            logger.info("[upload-url] falling back to yt-mp3-go for video_id=%s", video_id)
+            try:
+                audio_path = await asyncio.to_thread(_ytmp3go_download, video_id, tmp_dir)
+            except Exception as exc:
+                logger.error("[yt-mp3-go] fallback also failed: %s", exc)
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Could not extract audio from this YouTube video. "
+                        "This is usually a temporary issue — try again in a few minutes."
+                    ),
+                ) from exc
 
-            async with _PIPELINE_SEMAPHORE:
-                parsed, simplified = await asyncio.to_thread(_run_pipeline, audio_path, suffix)
+        suffix = audio_path.suffix.lower()
+
+        async with _PIPELINE_SEMAPHORE:
+            parsed, simplified = await asyncio.to_thread(_run_pipeline, audio_path, suffix)
 
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Download error: {exc}") from exc
+    finally:
+        tmp_dir_obj.cleanup()
 
     key = simplified.key
     scales = suggest_scales(key)
@@ -379,6 +545,44 @@ async def upload_url(req: UrlRequest) -> dict:
         "chords": chords,
         "theory": theory_lesson,
     }
+
+
+@app.post("/api/youtube/validate")
+async def youtube_validate(req: UrlValidateRequest) -> dict:
+    """Check whether a YouTube URL points to a real, accessible video.
+
+    Uses the YouTube oEmbed API (no API key required) — lightweight, no
+    audio extraction. Called by the frontend on URL paste/blur so the user
+    gets immediate feedback before hitting Submit.
+
+    Returns:
+        { valid: true,  title: str, thumbnail: str }
+        { valid: false, error: str }
+    """
+    video_id = _extract_video_id(req.url)
+    if not video_id:
+        return {"valid": False, "error": "Not a recognised YouTube URL."}
+
+    oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+    try:
+        oembed_req = urllib.request.Request(
+            oembed_url,
+            headers={"User-Agent": _USER_AGENTS[0]},
+        )
+        with urllib.request.urlopen(oembed_req, timeout=8) as resp:
+            data = json.loads(resp.read())
+        return {
+            "valid": True,
+            "title": data.get("title", ""),
+            "thumbnail": data.get("thumbnail_url", ""),
+        }
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return {"valid": False, "error": "Video not found or is private."}
+        return {"valid": False, "error": f"YouTube returned an error ({exc.code})."}
+    except Exception as exc:
+        logger.warning("[youtube/validate] oEmbed failed: %s", exc)
+        return {"valid": False, "error": "Could not reach YouTube to validate this URL."}
 
 
 @app.post("/api/subscribe")

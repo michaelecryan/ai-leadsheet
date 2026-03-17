@@ -1105,12 +1105,34 @@
     </div>
   </div>
 
+  <!-- Input tabs -->
+  <div class="input-tabs" id="input-tabs" style="max-width:560px;width:100%">
+    <button class="input-tab active" id="tab-file">Upload file</button>
+    <button class="input-tab" id="tab-url">YouTube URL</button>
+  </div>
+
   <div id="drop-zone" role="button" tabindex="0" aria-label="Upload audio file">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;margin-bottom:12px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <h2>Drop your track here</h2>
     <p>or click to browse</p>
     <p class="file-hint">MP3 · WAV · M4A · MIDI</p>
     <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.mid,.midi" />
+  </div>
+
+  <!-- YouTube URL form -->
+  <div id="url-form" style="display:none;flex-direction:column;gap:10px;width:100%;max-width:560px">
+    <input type="url" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false" />
+    <!-- Validation preview: shown after blur when URL is valid -->
+    <div id="yt-preview" style="display:none;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px">
+      <img id="yt-preview-thumb" src="" alt="" style="width:72px;height:54px;object-fit:cover;border-radius:6px;flex-shrink:0" />
+      <div>
+        <div id="yt-preview-title" style="font-size:0.875rem;font-weight:600;color:var(--text);line-height:1.4"></div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">YouTube · ready to analyse</div>
+      </div>
+    </div>
+    <!-- Inline error from validation -->
+    <div id="yt-validate-error" style="display:none;font-size:0.82rem;color:var(--danger);padding:2px 0"></div>
+    <button id="url-submit" style="background:var(--accent);border:none;border-radius:var(--radius-md);color:#fff;font-size:0.9rem;font-weight:600;padding:12px;cursor:pointer;transition:background 0.15s">Analyse track &rarr;</button>
   </div>
 
   <div id="loading">
@@ -1557,15 +1579,23 @@
       this.textContent = expanded ? "Show full progression \u2014 bar by bar" : "Hide full progression";
     });
 
-    // ── Input tab toggle (YouTube tab removed — kept as no-op guard) ────────
+    // ── Input tab toggle ─────────────────────────────────────────────────────
     const _tabFile = document.getElementById("tab-file");
     const _tabUrl  = document.getElementById("tab-url");
     const _urlSubmit = document.getElementById("url-submit");
-    if (_tabFile) _tabFile.addEventListener("click", () => { dropZone.style.display = "flex"; });
+    if (_tabFile) _tabFile.addEventListener("click", () => {
+      dropZone.style.display = "block";
+      const uf = document.getElementById("url-form");
+      if (uf) uf.style.display = "none";
+      if (_tabFile) _tabFile.classList.add("active");
+      if (_tabUrl) _tabUrl.classList.remove("active");
+    });
     if (_tabUrl) _tabUrl.addEventListener("click", () => {
       dropZone.style.display = "none";
       const uf = document.getElementById("url-form");
       if (uf) uf.style.display = "flex";
+      if (_tabUrl) _tabUrl.classList.add("active");
+      if (_tabFile) _tabFile.classList.remove("active");
     });
     if (_urlSubmit) _urlSubmit.addEventListener("click", () => {
       const urlEl = document.getElementById("url-input");
@@ -1573,6 +1603,9 @@
       if (url) uploadUrl(url);
     });
     const _urlInput = document.getElementById("url-input");
+    if (_urlInput) _urlInput.addEventListener("blur", () => {
+      validateYouTubeUrl(_urlInput.value.trim());
+    });
     if (_urlInput) _urlInput.addEventListener("keydown", e => {
       if (e.key === "Enter") {
         const url = e.target.value.trim();
@@ -1616,6 +1649,11 @@
         return;
       }
       showLoading();
+      // Override loading message for YouTube path
+      const lm = document.querySelector("#loading .loading-main");
+      const ls = document.querySelector("#loading .loading-sub");
+      if (lm) lm.textContent = "Downloading from YouTube\u2026";
+      if (ls) ls.textContent = "This can take up to 60 seconds. Hold tight.";
       try {
         const res  = await fetch("/upload-url", {
           method: "POST",
@@ -1623,10 +1661,52 @@
           body: JSON.stringify({ url }),
         });
         const data = await res.json();
-        if (!res.ok) { showError(data.detail || `Server error ${res.status}`); return; }
+        if (!res.ok) {
+          const detail = data.detail || `Server error ${res.status}`;
+          const isYtBlock = detail.toLowerCase().includes("could not extract");
+          showError(
+            isYtBlock
+              ? detail + " — or try downloading the MP3 from Suno directly and uploading it."
+              : detail
+          );
+          return;
+        }
         showResult(data, null);  // null file — YouTube mode, no audio blob
       } catch {
         showError("Could not reach the server. Is the backend running?");
+      }
+    }
+
+    // ── YouTube URL validation on blur ────────────────────────────────────────
+    async function validateYouTubeUrl(url) {
+      const previewEl = document.getElementById("yt-preview");
+      const errEl     = document.getElementById("yt-validate-error");
+      const thumbEl   = document.getElementById("yt-preview-thumb");
+      const titleEl   = document.getElementById("yt-preview-title");
+      if (!previewEl || !errEl) return;
+      if (!url) { previewEl.style.display = "none"; errEl.style.display = "none"; return; }
+      try {
+        const res  = await fetch("/api/youtube/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+        const data = await res.json();
+        if (data.valid) {
+          titleEl.textContent = data.title || "YouTube video";
+          thumbEl.src = data.thumbnail || "";
+          thumbEl.style.display = data.thumbnail ? "" : "none";
+          previewEl.style.display = "flex";
+          errEl.style.display = "none";
+        } else {
+          previewEl.style.display = "none";
+          errEl.textContent = data.error || "Invalid URL";
+          errEl.style.display = "block";
+        }
+      } catch {
+        // Network error during validation — don't block the user, just clear state
+        previewEl.style.display = "none";
+        errEl.style.display = "none";
       }
     }
 
@@ -1667,6 +1747,8 @@
       featureStrip.style.display  = "none";
       chordMarquee.style.display  = "none";
       outputPreview.style.display = "none";
+      const _itabs = document.getElementById("input-tabs");
+      if (_itabs) _itabs.style.display = "none";
 
       // Track anonymous usage (gate fires on next upload attempt, not this one)
       if (!currentUser) {
@@ -2007,6 +2089,8 @@
       outputPreview.style.display = "none";
       const uf = document.getElementById("url-form");
       if (uf) uf.style.display = "none";
+      const itabs = document.getElementById("input-tabs");
+      if (itabs) itabs.style.display = "none";
       loading.style.display  = "flex";
 
       // Sequential loading messages
@@ -2080,6 +2164,8 @@
       outputPreview.style.display = "";
       const uf2 = document.getElementById("url-form");
       if (uf2) uf2.style.display = "none";
+      const itabs2 = document.getElementById("input-tabs");
+      if (itabs2) itabs2.style.display = "";
       const tf = document.getElementById("tab-file");
       const tu = document.getElementById("tab-url");
       if (tf) tf.classList.add("active");
@@ -2087,6 +2173,10 @@
       fileInput.value = "";
       const ui = document.getElementById("url-input");
       if (ui) ui.value = "";
+      const ytprev = document.getElementById("yt-preview");
+      if (ytprev) ytprev.style.display = "none";
+      const ytverr = document.getElementById("yt-validate-error");
+      if (ytverr) ytverr.style.display = "none";
     }
 
     // ── Email capture modal ──────────────────────────────────────────────────
