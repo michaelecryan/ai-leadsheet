@@ -86,18 +86,25 @@ The user is a non-musician. They do not know what a chord progression is. They d
   4. **Temporal smoothing** (`_smooth_chords`) replaces isolated single-bar anomalies with neighbour chord
   5. **Two-pass first-chord key correction** — bias-free first pass detects chords; first chord passed to `_detect_key()` which scans top-8 K-S candidates for one whose tonic matches; resolves the relative-key false-positive bug (K-S returning "F major" for songs in A minor) that caused Gm hallucinations
 - **Phase 5: User accounts + chart storage** — Supabase Auth (Google OAuth + magic link), Postgres chart storage, Row Level Security, auto-trigger for profile creation with 7-day trial. New endpoints: `GET/POST /api/charts`, `GET/PATCH/DELETE /api/charts/{id}`, `GET /api/profile`. New pages: `/dashboard` (saved charts list), `/chart/{id}` (individual chart view with share link). Anonymous first analysis allowed; forced sign-up gate after 1 free analysis. `sessionStorage` persists chart data across OAuth redirect for auto-save on return. Shared JS extracted to `frontend/soloact-chords.js` (CHORD_SHAPES, buildChordSvg, LESSON_LOOKUP, renderLessons, plainEnglishKey). BPM cast to `int` before Postgres insert. After save, redirects to `/dashboard`.
+- **Phase 6: Stripe billing** — Checkout session creation, webhook handling (checkout.session.completed + customer.subscription.deleted), Stripe customer ID stored in profiles, plan status updates. 7-day free trial via Stripe checkout. Routes in `backend/stripe_routes.py`.
+- **Music theory micro-lesson** (`leadsheet/claude_lesson.py`) — Claude Haiku generates 4-field JSON lesson (progression_summary, emotional_character, beginner_takeaway, theory_note) anchored to detected song data. Persisted to Supabase `charts` table. Requires `ANTHROPIC_API_KEY` env var. Gracefully returns `None` if key missing or API fails.
+- **Public chart sharing** — `GET /api/charts/{id}/public` endpoint serves charts without auth; `chart.html` loads via public endpoint first, checks ownership for edit controls. Share CTA with `navigator.share()` (native share sheet on mobile) + clipboard fallback. "Try SoloAct free" CTA for non-signed-in viewers.
+- **Playback speed control** — cycle 1x → 0.75x → 0.5x → 0.25x via speed button in player bar. Resets on new track load.
+- **Layout reorder** — player bar directly below chord diagrams (above theory section) for better play-along flow.
+- **YouTube URL tab** — re-enabled (`FEATURES.youtubeUrl = true`), but yt-dlp blocked by YouTube bot detection (n-challenge / PO token issue, upstream). Suno URL ingestion not feasible without headless browser or API auth.
 
 ### 🔄 Active Development
-- Suno API integration exploration (user requested — not yet started)
-- Phase 4 chord quality: further validation on diverse real-world uploads needed
+- Phase 4 chord quality: bar-by-bar grid gets stuck on one chord (GitHub issue #48) — launch blocker
+- UX/UI pass — next on pre-launch roadmap
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
-- ~~Payment/paywall (Phase 6)~~ — Done
 - `--for guitar|piano` CLI flag (future phase — guitar only for V1)
 - Melody tabs / fretboard mapper (Phase 8)
 - Piano voicings / piano chord diagrams (later phase — guitar is V1 instrument)
-- URL paste input for mobile (desktop-first for V1, mobile capture layer later)
+- Built-in guitar tuner for standard tuning (GitHub issue #50)
+- Capacitor iOS app wrapper (GitHub issue #49)
+- Suno URL ingestion (requires headless browser or Suno API auth — deferred)
 
 ---
 
@@ -106,6 +113,9 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - **Processing speed:** Basic Pitch takes 20–30 seconds for a full track. Workaround under evaluation: process first 60 seconds for fast initial result, full track in background.
 - **Progress indicator:** ~~No loading state.~~ Resolved in Issue #6 — loading copy now reads "Transcribing your track… This usually takes 20–40 seconds. Hold tight."
 - **Chord chart noise:** ~~Full bar-by-bar chart is overwhelming.~~ Resolved in Issue #6 — hero section now shows top 6 chords by frequency; bar chart is secondary.
+- **Chord detection accuracy** — bar-by-bar grid frequently shows one chord for long stretches even when music is changing (GitHub issue #48). Launch blocker. Likely causes: `_smooth_chords()` too aggressive, stage-2 SR (11025 Hz) too low for fast changes.
+- **YouTube URL ingestion broken** — yt-dlp blocked by YouTube bot detection (n-challenge solving fails). Upstream issue affecting all yt-dlp users. Code is built and feature-flagged on, but downloads fail. Will resolve when yt-dlp ships a fix.
+- **`.env` not auto-loaded** — `python-dotenv` not installed; `uv run` does not auto-load `.env`. Use `uv run --env-file .env` when starting locally. Railway loads env vars from dashboard (no issue in prod).
 - **Diminished chords:** ~~F#dim, Adim, Bdim appearing in output.~~ Resolved — `simplify.py` now collapses `dim` → minor, `dim7` → `m7`.
 
 ---
