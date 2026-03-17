@@ -119,66 +119,77 @@
     #drop-zone .file-hint { margin-top: 12px; font-size: 0.875rem; color: var(--text-muted); }
     #file-input { display: none; }
 
-    /* ── Output preview section ── */
-    #output-preview {
-      width: 100%;
-      max-width: 900px;
-      text-align: center;
-      padding-bottom: 120px;
-      margin-top: 64px;
+    /* ── Hero chord preview ── */
+    .hero-preview {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 28px;
+      flex-wrap: wrap;
     }
-    #output-preview h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
+    .hero-preview .preview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px 8px;
+      text-align: center;
+      min-width: 90px;
+    }
+    .hero-preview .preview-card-name {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
       color: var(--text);
+      margin-bottom: 4px;
+    }
+    .hero-preview .preview-card svg {
+      display: block;
+      margin: 0 auto;
+      transform: scale(0.72);
+      transform-origin: top center;
+    }
+
+    /* ── Pitch + CTAs ── */
+    #output-preview {
+      text-align: center;
+      margin-top: 28px;
+      margin-bottom: 48px;
+      max-width: 540px;
+    }
+    .pitch-copy {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
       margin-bottom: 20px;
     }
-    .preview-container {
-      position: relative;
-      max-width: 900px;
-      margin: 0 auto;
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border);
-      overflow: hidden;
-      box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
-    }
-    .preview-container video,
-    .preview-container img,
-    .preview-container .preview-placeholder {
-      display: block;
-      width: 100%;
-    }
-    .preview-placeholder {
-      height: 480px;
+    .cta-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--surface);
-      color: var(--text-muted);
-      font-size: 0.9375rem;
+      gap: 12px;
     }
-    .preview-fade {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 120px;
-      background: linear-gradient(to bottom, transparent, var(--bg));
-      pointer-events: none;
-    }
-    .preview-cta {
+    .cta-primary {
       display: inline-block;
-      margin-top: 24px;
+      font-family: var(--font-ui);
       font-size: 0.9375rem;
-      color: var(--accent-text);
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      padding: 10px 22px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .cta-primary:hover { background: var(--accent-hover); }
+    .cta-sep { color: var(--text-muted); font-size: 0.84rem; }
+    .cta-secondary {
+      font-family: var(--font-ui);
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
       text-decoration: none;
       transition: color 0.15s;
-      cursor: pointer;
-      background: none;
-      border: none;
-      font-family: var(--font-ui);
     }
-    .preview-cta:hover { color: var(--accent); }
+    .cta-secondary:hover { color: var(--text); }
 
     /* ── Loading ── */
     #loading {
@@ -1049,24 +1060,35 @@
     <span class="f-star">&#x2726;</span>&nbsp;Plain-English theory
   </div>
 
+  <!-- Hero chord preview — show the product above the fold -->
+  <div class="hero-preview" id="hero-preview"></div>
+  <script>
+  (function() {
+    const chords = ["Am", "G", "F", "C"];
+    const container = document.getElementById("hero-preview");
+    container.innerHTML = chords.map(sym => {
+      const svg = buildChordSvg(sym);
+      return '<div class="preview-card"><div class="preview-card-name">' + sym + '</div>' + (svg || '') + '</div>';
+    }).join("");
+  })();
+  </script>
+
+  <!-- Pitch + dual CTAs -->
+  <div id="output-preview">
+    <p class="pitch-copy">SoloAct takes your favourite song &mdash; whether it&rsquo;s a track you made with AI or one from your favourite artist &mdash; breaks it down into its simplest structure, and gets you from zero to playing in seconds.</p>
+    <div class="cta-row">
+      <a href="/example" class="cta-primary">See it in action &rarr;</a>
+      <span class="cta-sep">or</span>
+      <a href="#upload" class="cta-secondary" onclick="event.preventDefault();document.getElementById('drop-zone').scrollIntoView({behavior:'smooth'})">Upload your track</a>
+    </div>
+  </div>
+
   <div id="drop-zone" role="button" tabindex="0" aria-label="Upload audio file">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;margin-bottom:12px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <h2>Drop your track here</h2>
     <p>or click to browse</p>
     <p class="file-hint">MP3 · WAV · M4A · MIDI</p>
     <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.mid,.midi" />
-  </div>
-
-  <!-- Output preview — below the fold -->
-  <div id="output-preview">
-    <h2>Learn Your Song</h2>
-    <div class="preview-container">
-      <video autoplay loop muted playsinline style="width:100%">
-        <source src="/static/preview.mp4" type="video/mp4">
-      </video>
-      <div class="preview-fade"></div>
-    </div>
-    <button class="preview-cta" onclick="document.getElementById('drop-zone').scrollIntoView({behavior:'smooth'})">Upload your track to get yours &rarr;</button>
   </div>
 
   <div id="loading">
@@ -1447,6 +1469,7 @@
     // ── DOM refs ─────────────────────────────────────────────────────────────
     const dropZone      = document.getElementById("drop-zone");
     const featureStrip  = document.getElementById("feature-strip");
+    const heroPreview   = document.getElementById("hero-preview");
     const outputPreview = document.getElementById("output-preview");
     const fileInput   = document.getElementById("file-input");
     const loading     = document.getElementById("loading");
@@ -1689,6 +1712,11 @@
         playerSection.style.display = "none";
         setupYouTubePlayer(data.video_id);
         ytSection.style.display = "block";
+      } else if (data.audio_url) {
+        // URL mode: direct audio source (e.g. example page)
+        ytSection.style.display = "none";
+        setupPlayerFromUrl(data.audio_url);
+        playerSection.style.display = "block";
       } else if (file) {
         // File upload mode: audio element + blob URL
         ytSection.style.display = "none";
@@ -1766,6 +1794,19 @@
       timeCurrent.textContent = "0:00";
       timeTotal.textContent = "0:00";
       // Reset speed
+      speedIdx = 0;
+      audioEl.playbackRate = 1;
+      speedBtn.textContent = "1x";
+    }
+
+    function setupPlayerFromUrl(url) {
+      if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+      audioEl.src = url;
+      activeChordIdx = -1;
+      playBtn.innerHTML = "&#9654;";
+      progressBar.value = 0;
+      timeCurrent.textContent = "0:00";
+      timeTotal.textContent = "0:00";
       speedIdx = 0;
       audioEl.playbackRate = 1;
       speedBtn.textContent = "1x";
@@ -1937,6 +1978,7 @@
       hideAll();
       dropZone.style.display      = "none";
       featureStrip.style.display  = "none";
+      heroPreview.style.display   = "none";
       outputPreview.style.display = "none";
       const uf = document.getElementById("url-form");
       if (uf) uf.style.display = "none";
@@ -2009,6 +2051,7 @@
       if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       dropZone.style.display      = "block";
       featureStrip.style.display  = "";
+      heroPreview.style.display   = "";
       outputPreview.style.display = "";
       const uf2 = document.getElementById("url-form");
       if (uf2) uf2.style.display = "none";
@@ -2097,6 +2140,80 @@
         document.getElementById('cookie-bar').style.display = 'none';
       });
     })();
+  </script>
+
+  <!-- Example page bootstrap — activated by ?example=1 query param -->
+  <script>
+  (function() {
+    if (!new URLSearchParams(window.location.search).has("example")) return;
+
+    // Example chart data — A minor, Am G F C progression at ~122 BPM
+    const EXAMPLE_DATA = {
+      key: "A minor",
+      bpm: 122,
+      time_signature: "4/4",
+      capo_hint: null,
+      scales: ["A minor pentatonic", "A natural minor"],
+      audio_url: "/static/example.mp3",
+      is_example: true,
+      theory: {
+        progression_summary: "Your progression moves i\u2013bVII\u2013bVI\u2013bIII, which means you\u2019re staying in A minor\u2019s family while borrowing some darker, flattened chords that create emotional depth.",
+        emotional_character: "This progression has a moody, introspective feel because those flat chords (G, F) pull downward and create tension rather than resolution. It\u2019s the kind of sound you\u2019d hear in indie, alternative, or cinematic music where sadness or contemplation is the goal.",
+        beginner_takeaway: "Tonight, just focus on getting Am to G smoothly\u2014that\u2019s your foundation\u2014then worry about the rest once those two feel comfortable under your fingers.",
+        theory_note: "Am\u2013G\u2013F\u2013C is one of the most common progressions in popular music. It appears in hundreds of hit songs from \u201CStairway to Heaven\u201D to \u201CNumb\u201D to \u201CHouse of the Rising Sun.\u201D"
+      },
+      chords: [
+        { symbol: "Am", measure: 1, time_seconds: 0.0 },
+        { symbol: "Am", measure: 2, time_seconds: 1.97 },
+        { symbol: "G",  measure: 3, time_seconds: 3.93 },
+        { symbol: "G",  measure: 4, time_seconds: 5.90 },
+        { symbol: "F",  measure: 5, time_seconds: 7.87 },
+        { symbol: "F",  measure: 6, time_seconds: 9.84 },
+        { symbol: "C",  measure: 7, time_seconds: 11.80 },
+        { symbol: "C",  measure: 8, time_seconds: 13.77 },
+        { symbol: "Am", measure: 9, time_seconds: 15.74 },
+        { symbol: "Am", measure: 10, time_seconds: 17.70 },
+        { symbol: "G",  measure: 11, time_seconds: 19.67 },
+        { symbol: "G",  measure: 12, time_seconds: 21.64 },
+        { symbol: "F",  measure: 13, time_seconds: 23.61 },
+        { symbol: "F",  measure: 14, time_seconds: 25.57 },
+        { symbol: "C",  measure: 15, time_seconds: 27.54 },
+        { symbol: "C",  measure: 16, time_seconds: 29.51 },
+        { symbol: "Am", measure: 17, time_seconds: 31.48 },
+        { symbol: "Am", measure: 18, time_seconds: 33.44 },
+        { symbol: "G",  measure: 19, time_seconds: 35.41 },
+        { symbol: "G",  measure: 20, time_seconds: 37.38 },
+        { symbol: "F",  measure: 21, time_seconds: 39.34 },
+        { symbol: "F",  measure: 22, time_seconds: 41.31 },
+        { symbol: "C",  measure: 23, time_seconds: 43.28 },
+        { symbol: "C",  measure: 24, time_seconds: 45.25 },
+        { symbol: "Am", measure: 25, time_seconds: 47.21 },
+        { symbol: "Am", measure: 26, time_seconds: 49.18 },
+        { symbol: "G",  measure: 27, time_seconds: 51.15 },
+        { symbol: "G",  measure: 28, time_seconds: 53.11 },
+        { symbol: "F",  measure: 29, time_seconds: 55.08 },
+        { symbol: "F",  measure: 30, time_seconds: 57.05 },
+        { symbol: "C",  measure: 31, time_seconds: 59.02 },
+        { symbol: "C",  measure: 32, time_seconds: 60.98 }
+      ]
+    };
+
+    // Hide landing page elements and show result
+    document.addEventListener("DOMContentLoaded", () => {
+      showResult(EXAMPLE_DATA, null);
+      // Hide save button on example page — this isn't the user's chart
+      const saveSection = document.getElementById("save-section");
+      if (saveSection) saveSection.style.display = "none";
+      // Add example banner above the result
+      const banner = document.createElement("div");
+      banner.style.cssText = "text-align:center;padding:12px 18px;margin-bottom:16px;background:var(--accent-muted);border:1px solid rgba(62,219,140,0.25);border-radius:var(--radius-md);font-size:0.875rem;color:var(--accent-text);max-width:700px;margin-left:auto;margin-right:auto;";
+      banner.innerHTML = 'This is an example chart. <a href="/" style="color:#fff;text-decoration:underline;margin-left:6px">Upload your own track</a> to get yours.';
+      const result = document.getElementById("result");
+      result.parentNode.insertBefore(banner, result);
+      // Auto-scroll to the result content after a brief render tick
+      setTimeout(() => banner.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    });
+  })();
   </script>
 </body>
 </html>

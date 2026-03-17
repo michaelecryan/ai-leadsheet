@@ -20,7 +20,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from slowapi import Limiter
@@ -545,6 +545,18 @@ def dashboard() -> FileResponse:
 def chart_view(chart_id: str) -> FileResponse:
     """Serve the individual chart view page (chart ID read client-side from URL)."""
     return FileResponse("frontend/chart.html")
+
+
+@app.get("/example")
+def example_page() -> RedirectResponse:
+    """Redirect to the main page with example query param.
+
+    Serves the standard index.html which detects ?example=1 and
+    auto-renders a pre-built chart with working audio playback.
+    TODO: Replace /static/example.mp3 with a real Suno track
+    (Am G F C, A minor, ~122 BPM) before going live.
+    """
+    return RedirectResponse(url="/?example=1", status_code=302)
 
 
 @app.get("/settings")
