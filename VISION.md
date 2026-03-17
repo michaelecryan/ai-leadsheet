@@ -204,3 +204,9 @@ Key findings:
 - Community features are a distraction pre-PMF. Prove the individual loop first.
 
 **PMF bar:** Consistent inbound from the "I made a Suno song and want to learn to play it" narrative. Repeat uploads and lessons from the same user. Evidence of identity shift — not one-off novelty.
+
+---
+
+## What SoloAct Is
+
+SoloAct is a dark, focused web app that does one thing: you upload a song you made with Suno, and in 30 seconds it shows you the key, the four chords your song is built from, and exactly where to put your fingers to play each one. A green play button starts your track, and a horizontal chord strip scrolls in sync — the chord name lights up as it plays, and the matching finger diagram below gets a green highlight, so you always know what to play and how to play it. Below the diagrams, a short plain-English explanation tells you why your song sounds the way it does and what to practice first tonight. Below that, links to the exact JustinGuitar and Marty Music lessons that teach your specific chords. The whole thing is dark-mode, clean, and calm — no waveforms, no tabs, no jargon. It feels less like a music tool and more like someone who already knows guitar just sat down next to you and said "here, it's only four chords, let me show you."

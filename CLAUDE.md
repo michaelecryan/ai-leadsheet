@@ -92,10 +92,26 @@ The user is a non-musician. They do not know what a chord progression is. They d
 - **Playback speed control** — cycle 1x → 0.75x → 0.5x → 0.25x via speed button in player bar. Resets on new track load.
 - **Layout reorder** — player bar directly below chord diagrams (above theory section) for better play-along flow.
 - **YouTube URL tab** — re-enabled (`FEATURES.youtubeUrl = true`), but yt-dlp blocked by YouTube bot detection (n-challenge / PO token issue, upstream). Suno URL ingestion not feasible without headless browser or API auth.
+- **V1 UX/UI overhaul** (`frontend/index.html`, `chart.html`, `dashboard.html`, `soloact-chords.js`):
+  - **Design token system** — full CSS custom properties in `:root`: `--bg`, `--surface`, `--surface-raised`, `--border`, `--accent` (#3EDB8C green), `--text`, `--text-secondary`, `--text-muted`, `--font-ui`, `--font-mono`, `--radius-sm/md/lg/xl`. Applied consistently across all pages.
+  - **Typography** — Inter (UI) + JetBrains Mono (code/chords) via Google Fonts; all hardcoded `font-family` replaced with tokens
+  - **Accent color swap** — purple `#6c63ff` → green `#3EDB8C` everywhere including SVG chord diagrams (`soloact-chords.js`)
+  - **Sticky player bar** — `position: sticky; top: 0` with `backdrop-filter: blur(12px)` so player stays visible during scroll
+  - **Chord strip in player** — horizontal scrolling chord strip (`#chord-strip`) synced to playback; active chord auto-centers via `scrollTo()`
+  - **Collapsible bar-by-bar grid** — hidden by default behind toggle button with `aria-expanded` accessibility
+  - **Compressed meta info** — key + capo on single line; beginner-friendly capo copy ("Use a capo on fret X to play easier shapes")
+  - **Sequential loading messages** — cycles through 5 messages ("Analysing audio…", "Detecting key…", etc.) every 5s via `setInterval`
+  - **Landing page restructure** — new headline "Your song is more playable than you think." + subline "Your AI song. Your first guitar lesson." + inline feature strip (✦ Chord diagrams · ✦ Play along in sync · ✦ Plain-English theory) replacing 3-column cards
+  - **YouTube URL tab removed** — HTML removed from landing page; all JS references guarded with null checks
+  - **Drop zone SVG icon** — upload arrow icon, solid border at rest, accent glow on hover
+  - **My Charts button** — ghost style (border only, no accent fill)
+  - **Below-the-fold preview section** — video container with gradient fade overlay + smooth-scroll CTA ("Upload your track to get yours →"); video file placeholder pending (needs valid MP4)
+  - **File accept narrowed** — `.mp3,.wav,.m4a,.mid,.midi` (removed .flac, .ogg)
+  - **Canonical product description** added to `VISION.md` — "What SoloAct Is" paragraph
 
 ### 🔄 Active Development
 - Phase 4 chord quality: bar-by-bar grid gets stuck on one chord (GitHub issue #48) — launch blocker
-- UX/UI pass — next on pre-launch roadmap
+- Landing page preview video — needs valid MP4 screen recording (current file is corrupted/HTML)
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)

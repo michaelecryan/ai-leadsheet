@@ -107,7 +107,7 @@ function buildChordSvg(symbol) {
       const x1 = PAD_X + barreStrings[0] * STRING_GAP;
       const x2 = PAD_X + barreStrings[barreStrings.length - 1] * STRING_GAP;
       const cy = PAD_TOP + (barre - baseFret + 0.5) * FRET_GAP;
-      els.push(`<rect x="${x1 - DOT_R}" y="${cy - DOT_R}" width="${x2 - x1 + DOT_R * 2}" height="${DOT_R * 2}" rx="${DOT_R}" fill="#6c63ff"/>`);
+      els.push(`<rect x="${x1 - DOT_R}" y="${cy - DOT_R}" width="${x2 - x1 + DOT_R * 2}" height="${DOT_R * 2}" rx="${DOT_R}" fill="var(--accent, #3EDB8C)"/>`);
     }
   }
 
@@ -116,7 +116,7 @@ function buildChordSvg(symbol) {
     if (fret > 0 && fret !== barre) {
       const x  = PAD_X + s * STRING_GAP;
       const cy = PAD_TOP + (fret - baseFret + 0.5) * FRET_GAP;
-      els.push(`<circle cx="${x}" cy="${cy}" r="${DOT_R}" fill="#6c63ff"/>`);
+      els.push(`<circle cx="${x}" cy="${cy}" r="${DOT_R}" fill="var(--accent, #3EDB8C)"/>`);
     }
   }
 

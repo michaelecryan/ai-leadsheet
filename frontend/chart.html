@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chart — SoloAct</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <!-- Google Tag Manager -->
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-KJ7P8P38');</script>
   <!-- End Google Tag Manager -->
@@ -15,12 +18,35 @@
   <script>!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script");n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};ttq.load('D6S2SLJC77U0SF2NJII0');ttq.page()}(window,document,'ttq');</script>
   <!-- End TikTok Pixel -->
   <style>
+    :root {
+      --bg: #0A0A0B;
+      --surface: #141416;
+      --surface-raised: #1C1C1F;
+      --border: #2A2A2E;
+      --border-hover: #3A3A40;
+      --accent: #3EDB8C;
+      --accent-hover: #32C47A;
+      --accent-muted: rgba(62, 219, 140, 0.12);
+      --accent-text: #5AEEA0;
+      --text: #EDEDEF;
+      --text-secondary: #8B8B92;
+      --text-muted: #55555C;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      background: #0f0f0f;
-      color: #f0f0f0;
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -37,34 +63,34 @@
       margin-bottom: 36px;
     }
 
-    .header-logo { font-size: 1.4rem; font-weight: 700; text-decoration: none; color: #f0f0f0; }
+    .header-logo { font-size: 1.4rem; font-weight: 700; text-decoration: none; color: var(--text); }
 
     .back-link {
       font-size: 0.85rem;
-      color: #666;
+      color: var(--text-muted);
       text-decoration: none;
       display: flex;
       align-items: center;
       gap: 4px;
     }
-    .back-link:hover { color: #aaa; }
+    .back-link:hover { color: var(--text-secondary); }
 
     .share-btn {
       background: none;
-      border: 1px solid #2a2a2a;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      color: #888;
+      color: var(--text-secondary);
       font-size: 0.82rem;
       padding: 7px 14px;
       cursor: pointer;
       transition: border-color 0.15s, color 0.15s;
     }
-    .share-btn:hover { border-color: #555; color: #ccc; }
-    .share-btn.copied { border-color: #6c63ff; color: #6c63ff; }
+    .share-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .share-btn.copied { border-color: var(--accent); color: var(--accent); }
 
     /* ── Loading / error ── */
     .state-msg {
-      color: #555;
+      color: var(--text-muted);
       font-size: 0.95rem;
       margin-top: 60px;
     }
@@ -88,10 +114,10 @@
       gap: 10px;
       margin-bottom: 28px;
       font-size: 0.85rem;
-      color: #888;
+      color: var(--text-secondary);
     }
     .share-cta-btn {
-      background: #6c63ff;
+      background: var(--accent);
       border: none;
       border-radius: 8px;
       color: #fff;
@@ -101,20 +127,20 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-    .share-cta-btn:hover { background: #5b53ee; }
-    .share-cta-btn.copied { background: #333; }
+    .share-cta-btn:hover { background: var(--accent-hover); }
+    .share-cta-btn.copied { background: var(--surface-raised); }
 
     .cta-banner {
-      background: #161616;
-      border: 1px solid #252525;
-      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       padding: 16px 20px;
       margin-bottom: 28px;
       text-align: center;
     }
-    .cta-banner p { color: #888; font-size: 0.9rem; margin-bottom: 10px; }
+    .cta-banner p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px; }
     .cta-banner a {
-      color: #6c63ff;
+      color: var(--accent);
       text-decoration: none;
       font-weight: 600;
       font-size: 0.9rem;
@@ -127,30 +153,30 @@
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #555;
+      color: var(--text-muted);
       margin-bottom: 10px;
     }
 
-    .key-display { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; }
-    .key-plain   { font-size: 0.95rem; color: #888; margin-top: 4px; }
+    .key-display { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; font-family: var(--font-mono); }
+    .key-plain   { font-size: 1rem; color: var(--text-secondary); margin-top: 6px; }
 
     .meta-row { display: flex; gap: 16px; flex-wrap: wrap; }
-    .meta-item { background: #1a1a1a; border-radius: 10px; padding: 12px 18px; }
-    .meta-item .meta-label  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 4px; }
-    .meta-item .meta-value  { font-size: 1.1rem; font-weight: 600; }
+    .meta-item { background: var(--surface); border-radius: var(--radius-md); padding: 12px 18px; }
+    .meta-item .meta-label  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px; }
+    .meta-item .meta-value  { font-size: 1.1rem; font-weight: 600; font-family: var(--font-mono); }
 
     .capo-banner {
-      background: rgba(108, 99, 255, 0.12);
-      border: 1px solid rgba(108, 99, 255, 0.3);
-      border-radius: 10px;
+      background: var(--accent-muted);
+      border: 1px solid rgba(62, 219, 140, 0.3);
+      border-radius: var(--radius-md);
       padding: 14px 18px;
       font-size: 0.9rem;
-      color: #a89fff;
+      color: var(--accent-text);
     }
 
     /* ── Hero chord section ── */
     .hero-heading { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.01em; }
-    .hero-heading span { color: #6c63ff; }
+    .hero-heading span { color: var(--accent); }
 
     #hero-grid {
       display: flex;
@@ -160,43 +186,43 @@
       -webkit-overflow-scrolling: touch;
     }
     #hero-grid::-webkit-scrollbar { height: 4px; }
-    #hero-grid::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 2px; }
-    #hero-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    #hero-grid::-webkit-scrollbar-track { background: var(--surface); border-radius: 2px; }
+    #hero-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
     .hero-chord {
       flex: 0 0 auto;
-      background: #161616;
-      border: 1px solid #252525;
-      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       padding: 12px 14px 10px;
       text-align: center;
       min-width: 120px;
     }
-    .hero-chord-name { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .hero-chord-name { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; font-family: var(--font-mono); }
     .hero-chord-diagram svg { display: block; margin: 0 auto; }
     .hero-chord-no-diagram {
       width: 100px; height: 120px;
       display: flex; align-items: center; justify-content: center;
-      color: #444; font-size: 0.75rem; margin: 0 auto;
+      color: var(--text-muted); font-size: 0.75rem; margin: 0 auto;
     }
 
     /* ── Theory micro-lesson ── */
     #theory-section { display: none; width: 100%; max-width: 720px; margin-bottom: 32px; }
-    .theory-card { background: #161616; border: 1px solid #252525; border-radius: 14px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
-    .theory-summary { font-size: 1rem; font-weight: 600; color: #f0f0f0; line-height: 1.5; }
+    .theory-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
+    .theory-summary { font-size: 1rem; font-weight: 600; color: var(--text); line-height: 1.5; }
     .theory-fields { display: flex; flex-direction: column; gap: 12px; }
     .theory-field { display: flex; flex-direction: column; gap: 3px; }
-    .theory-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #6c63ff; }
-    .theory-text { font-size: 0.9rem; color: #bbb; line-height: 1.55; }
+    .theory-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+    .theory-text { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.55; }
 
     /* ── Education layer ── */
     #lessons-section { display: none; width: 100%; max-width: 720px; margin-bottom: 32px; }
     .lesson-cards { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
     .lesson-cards::-webkit-scrollbar { display: none; }
-    .lesson-card { flex-shrink: 0; background: #161616; border: 1px solid #252525; border-radius: 12px; padding: 14px 18px; min-width: 200px; }
-    .lesson-card-chord { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; color: #fff; }
-    .lesson-provider { font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-    .lesson-link { display: inline-block; font-size: 0.82rem; color: #6c63ff; text-decoration: none; margin-bottom: 12px; }
+    .lesson-card { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; min-width: 200px; }
+    .lesson-card-chord { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+    .lesson-provider { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .lesson-link { display: inline-block; font-size: 0.82rem; color: var(--accent); text-decoration: none; margin-bottom: 12px; }
     .lesson-link:hover { text-decoration: underline; }
     .lesson-link:last-child { margin-bottom: 0; }
 
@@ -208,17 +234,17 @@
       max-height: 360px;
       overflow-y: auto;
     }
-    .chord-card { background: #1a1a1a; border-radius: 8px; padding: 10px 8px; text-align: center; }
-    .chord-card .measure-num  { font-size: 0.6rem; color: #3a3a3a; margin-bottom: 4px; }
-    .chord-card .chord-symbol { font-size: 1.1rem; font-weight: 700; }
+    .chord-card { background: var(--surface); border-radius: 8px; padding: 10px 8px; text-align: center; }
+    .chord-card .measure-num  { font-size: 0.6rem; color: var(--border-hover); margin-bottom: 4px; }
+    .chord-card .chord-symbol { font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); }
 
     .scales-list { display: flex; gap: 8px; flex-wrap: wrap; }
-    .scale-tag   { background: #1a1a1a; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; color: #ccc; }
+    .scale-tag   { background: var(--surface); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 0.85rem; color: var(--text-secondary); }
 
     /* ── Footer ── */
-    footer { margin-top: 64px; padding: 24px; text-align: center; color: #444; font-size: 0.8rem; }
-    footer a { color: #555; text-decoration: none; }
-    footer a:hover { color: #888; }
+    footer { margin-top: 64px; padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem; }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text-secondary); }
   </style>
 </head>
 <body>
@@ -251,7 +277,6 @@
     </div>
 
     <div class="result-section">
-      <div class="result-label">Key</div>
       <div class="key-display" id="key-display"></div>
       <div class="key-plain"   id="key-plain"></div>
     </div>
@@ -343,11 +368,20 @@
 
       // Key
       document.getElementById('key-display').textContent = chart.key || '—';
-      document.getElementById('key-plain').textContent   = chart.key ? plainEnglishKey(chart.key) : '';
+      // Compress meta into single line: plain-English key + BPM + time sig
+      let metaText = chart.key ? plainEnglishKey(chart.key) : '';
+      if (chart.bpm) metaText += ` · ${Math.round(chart.bpm)} BPM`;
+      if (chart.time_signature) metaText += ` · ${chart.time_signature}`;
+      document.getElementById('key-plain').textContent = metaText;
 
-      // Capo
+      // Capo — beginner-friendly copy
       if (chart.capo_hint) {
-        document.getElementById('capo-banner').textContent = '\uD83C\uDFB8 Tip: ' + chart.capo_hint;
+        const match = chart.capo_hint.match(/fret (\d+)/i);
+        const fretNum = match ? match[1] : '';
+        const capoText = fretNum
+          ? `Place a capo on fret ${fretNum} to make these chords easier to play.`
+          : chart.capo_hint;
+        document.getElementById('capo-banner').textContent = capoText;
         document.getElementById('capo-section').style.display = '';
       }
 
@@ -373,14 +407,9 @@
         </div>`;
       }).join('');
 
-      // Meta
-      const metaRow = document.getElementById('meta-row');
-      if (chart.bpm) {
-        metaRow.appendChild(metaItem('Tempo', Math.round(chart.bpm) + ' BPM'));
-      }
-      if (chart.time_signature) {
-        metaRow.appendChild(metaItem('Time signature', chart.time_signature));
-      }
+      // Meta — already compressed into key-plain line above
+      // Hide the separate meta-row section
+      document.getElementById('meta-row').parentElement.style.display = 'none';
 
       // Scales
       if (chart.scales && chart.scales.length) {
@@ -475,9 +504,9 @@
 
     init();
   </script>
-  <div id="cookie-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;border-top:1px solid #2a2a2a;padding:12px 24px;align-items:center;justify-content:center;gap:16px;font-size:0.8rem;color:#888;z-index:2000">
-    <span>We use cookies for analytics and personalised ads. <a href="/privacy" style="color:#6c63ff">Learn more</a></span>
-    <button onclick="localStorage.setItem('cookieConsent','1');this.parentElement.style.display='none'" style="background:#6c63ff;border:none;border-radius:6px;color:#fff;font-size:0.8rem;font-weight:600;padding:6px 16px;cursor:pointer">Got it</button>
+  <div id="cookie-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface-raised);border-top:1px solid var(--border);padding:12px 24px;align-items:center;justify-content:center;gap:16px;font-size:0.8rem;color:var(--text-secondary);z-index:2000">
+    <span>We use cookies for analytics and personalised ads. <a href="/privacy" style="color:var(--accent)">Learn more</a></span>
+    <button onclick="localStorage.setItem('cookieConsent','1');this.parentElement.style.display='none'" style="background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:0.8rem;font-weight:600;padding:6px 16px;cursor:pointer">Got it</button>
   </div>
   <script>(function(){if(!localStorage.getItem('cookieConsent'))document.getElementById('cookie-bar').style.display='flex';})();</script>
 </body>
