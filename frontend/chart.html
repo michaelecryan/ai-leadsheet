@@ -78,9 +78,48 @@
     .chart-title-display {
       font-size: 1.5rem;
       font-weight: 700;
-      margin-bottom: 28px;
+      margin-bottom: 12px;
       letter-spacing: -0.02em;
     }
+
+    .share-cta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+    .share-cta-btn {
+      background: #6c63ff;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .share-cta-btn:hover { background: #5b53ee; }
+    .share-cta-btn.copied { background: #333; }
+
+    .cta-banner {
+      background: #161616;
+      border: 1px solid #252525;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    .cta-banner p { color: #888; font-size: 0.9rem; margin-bottom: 10px; }
+    .cta-banner a {
+      color: #6c63ff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .cta-banner a:hover { text-decoration: underline; }
 
     .result-section { margin-bottom: 20px; }
     .result-label {
@@ -189,7 +228,7 @@
   <header>
     <a href="/" class="header-logo">SoloAct</a>
     <div style="display:flex;gap:8px;align-items:center">
-      <a href="/dashboard" class="back-link">&larr; My charts</a>
+      <a href="/dashboard" class="back-link" id="owner-back" style="display:none">&larr; My charts</a>
       <button class="share-btn" id="share-btn">Copy link</button>
     </div>
   </header>
@@ -199,6 +238,17 @@
 
   <div id="chart-view" style="display:none">
     <div class="chart-title-display" id="chart-title"></div>
+
+    <div class="share-cta" id="share-cta">
+      <button class="share-cta-btn" id="share-cta-btn">Share chart</button>
+      <span>Share this chart with your band, students, or friends</span>
+    </div>
+
+    <!-- CTA for non-signed-in viewers -->
+    <div id="viewer-cta" class="cta-banner" style="display:none">
+      <p>Want chord charts for your own songs?</p>
+      <a href="/">Try SoloAct free &rarr;</a>
+    </div>
 
     <div class="result-section">
       <div class="result-label">Key</div>
@@ -259,22 +309,24 @@
     // ── Read chart ID from URL path (/chart/{id}) ─────────────────────────────
     const chartId = window.location.pathname.split('/').pop();
 
-    async function init() {
-      const { data: { session } } = await _sb.auth.getSession();
-      if (!session) {
-        window.location.href = '/';
-        return;
-      }
-      loadChart(session.access_token);
-    }
+    let isOwner = false;
 
-    async function loadChart(token) {
+    async function init() {
+      // Try public endpoint first — no auth needed for viewing shared charts
       try {
-        const res = await fetch(`/api/charts/${chartId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`/api/charts/${chartId}/public`);
         if (!res.ok) throw new Error('Not found');
         const { chart } = await res.json();
+
+        // Check if current user is the chart owner
+        const { data: { session } } = await _sb.auth.getSession();
+        if (session) {
+          const ownerRes = await fetch(`/api/charts/${chartId}`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (ownerRes.ok) isOwner = true;
+        }
+
         renderChart(chart);
       } catch (_) {
         document.getElementById('state-loading').style.display = 'none';
@@ -355,6 +407,13 @@
         document.getElementById('lesson-cards')
       );
 
+      // Show owner controls or viewer CTA
+      if (isOwner) {
+        document.getElementById('owner-back').style.display = '';
+      } else {
+        document.getElementById('viewer-cta').style.display = '';
+      }
+
       document.getElementById('chart-view').style.display = 'block';
     }
 
@@ -383,10 +442,32 @@
       return el;
     }
 
-    // ── Share button ──────────────────────────────────────────────────────────
+    // ── Share buttons ─────────────────────────────────────────────────────────
+    async function shareChart(btn) {
+      const url = window.location.href;
+      const title = document.getElementById('chart-title').textContent || 'SoloAct Chart';
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text: `Check out my chord chart for "${title}"`, url });
+          return;
+        } catch (_) {}
+      }
+
+      await navigator.clipboard.writeText(url);
+      const orig = btn.textContent;
+      btn.textContent = 'Link copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    }
+
+    document.getElementById('share-cta-btn').addEventListener('click', () => {
+      shareChart(document.getElementById('share-cta-btn'));
+    });
+
     document.getElementById('share-btn').addEventListener('click', async () => {
-      await navigator.clipboard.writeText(window.location.href);
       const btn = document.getElementById('share-btn');
+      await navigator.clipboard.writeText(window.location.href);
       btn.textContent = 'Copied!';
       btn.classList.add('copied');
       setTimeout(() => { btn.textContent = 'Copy link'; btn.classList.remove('copied'); }, 2000);

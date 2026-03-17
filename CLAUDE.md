@@ -93,7 +93,7 @@ The user is a non-musician. They do not know what a chord progression is. They d
 
 ### ❌ Not Started (Future Phases)
 - PDF export (Phase 7)
-- Payment/paywall (Phase 6)
+- ~~Payment/paywall (Phase 6)~~ — Done
 - `--for guitar|piano` CLI flag (future phase — guitar only for V1)
 - Melody tabs / fretboard mapper (Phase 8)
 - Piano voicings / piano chord diagrams (later phase — guitar is V1 instrument)
@@ -317,7 +317,7 @@ V1 is complete when ALL of these are true:
 | 3b | Education layer. Surface contextual JustinGuitar / Marty Music YouTube lessons based on detected chords. Retention mechanism — do not defer past Phase 3. | ✅ Done |
 | 4 | Chord quality improvements. Essentia/Demucs pipeline evaluation. | 🔄 Active |
 | 5 | User accounts + chart storage. Auth. Saved charts dashboard. | ✅ Done |
-| 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | Not started |
+| 6 | Monetisation. Stripe. Free/paid tier. ~$5–10/month. | ✅ Done |
 | 7 | PDF export. Formatting polish. | Not started |
 | 8 | Melody tabs (fretboard mapper). Post-validation only. | Not started |
 

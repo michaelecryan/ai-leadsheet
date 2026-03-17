@@ -481,6 +481,28 @@ async def get_chart(chart_id: str, user=Depends(get_current_user)) -> dict:
     return {"chart": result.data[0]}
 
 
+@app.get("/api/charts/{chart_id}/public")
+async def get_chart_public(chart_id: str) -> dict:
+    """Return a single chart by ID without authentication.
+
+    Used for shared chart links so recipients can view without signing up.
+    Does not require auth — only returns chart data, no owner actions.
+    """
+    client = get_admin_client()
+    result = (
+        client.table("charts")
+        .select("*")
+        .eq("id", chart_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Chart not found.")
+    chart = result.data[0]
+    # Strip owner-sensitive fields
+    chart.pop("user_id", None)
+    return {"chart": chart}
+
+
 @app.patch("/api/charts/{chart_id}")
 async def rename_chart(chart_id: str, req: UpdateChartRequest, user=Depends(get_current_user)) -> dict:
     """Rename a chart. Returns 404 if the chart doesn't belong to the user."""

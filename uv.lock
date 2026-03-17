@@ -59,7 +59,7 @@ requires-dist = [
     { name = "supabase", specifier = ">=2.0.0" },
     { name = "typer", specifier = ">=0.23.2" },
     { name = "uvicorn", specifier = ">=0.39.0" },
-    { name = "yt-dlp", specifier = ">=2024.0.0" },
+    { name = "yt-dlp", specifier = ">=2026.3.3" },
 ]
 
 [[package]]

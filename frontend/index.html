@@ -345,6 +345,21 @@
 
     #play-btn:hover { background: #5a52e0; }
 
+    .speed-control { flex-shrink: 0; }
+    #speed-btn {
+      background: #2a2a2a;
+      border: none;
+      border-radius: 6px;
+      color: #aaa;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      min-width: 36px;
+    }
+    #speed-btn:hover { background: #333; color: #fff; }
+
     .progress-wrap {
       flex: 1;
       display: flex;
@@ -969,11 +984,6 @@
       <div id="hero-grid"></div>
     </div>
 
-    <!-- Theory micro-lesson -->
-    <div id="theory-section" class="result-section">
-      <div class="theory-card" id="theory-card"></div>
-    </div>
-
     <!-- Audio player -->
     <div id="player-section" class="result-section">
       <div class="player-bar">
@@ -985,6 +995,9 @@
             <span id="time-total">0:00</span>
           </div>
         </div>
+        <div class="speed-control">
+          <button id="speed-btn" aria-label="Playback speed">1x</button>
+        </div>
       </div>
       <audio id="audio-el" preload="auto"></audio>
     </div>
@@ -992,6 +1005,11 @@
     <!-- YouTube player (URL submissions) -->
     <div id="yt-section" class="result-section">
       <div id="yt-player"></div>
+    </div>
+
+    <!-- Theory micro-lesson -->
+    <div id="theory-section" class="result-section">
+      <div class="theory-card" id="theory-card"></div>
     </div>
 
     <!-- Education layer — learn these chords -->
@@ -1284,7 +1302,7 @@
 
     // ── Feature flags ────────────────────────────────────────────────────────
     // Set youtubeUrl: true to re-enable the YouTube URL tab and form.
-    const FEATURES = { youtubeUrl: false };
+    const FEATURES = { youtubeUrl: true };
 
     // CHORD_SHAPES, buildChordSvg(), LESSON_LOOKUP, renderLessons(), plainEnglishKey()
     // are defined in soloact-chords.js, loaded above.
@@ -1579,6 +1597,10 @@
       progressBar.value = 0;
       timeCurrent.textContent = "0:00";
       timeTotal.textContent = "0:00";
+      // Reset speed
+      speedIdx = 0;
+      audioEl.playbackRate = 1;
+      speedBtn.textContent = "1x";
     }
 
     // Play / pause
@@ -1590,6 +1612,18 @@
         audioEl.pause();
         playBtn.innerHTML = "&#9654;";
       }
+    });
+
+    // Speed control — cycle through 1x → 0.75x → 0.5x → 0.25x
+    const SPEEDS = [1, 0.75, 0.5, 0.25];
+    let speedIdx = 0;
+    const speedBtn = document.getElementById("speed-btn");
+
+    speedBtn.addEventListener("click", () => {
+      speedIdx = (speedIdx + 1) % SPEEDS.length;
+      const rate = SPEEDS[speedIdx];
+      audioEl.playbackRate = rate;
+      speedBtn.textContent = rate === 1 ? "1x" : rate + "x";
     });
 
     // Duration available
@@ -1668,6 +1702,10 @@
     }
 
     // ── Theory micro-lesson renderer ─────────────────────────────────────────
+    function escHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
     function renderTheory(theory, sectionEl) {
       if (!theory || !theory.progression_summary) {
         sectionEl.style.display = "none";
