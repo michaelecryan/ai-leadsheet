@@ -9,51 +9,52 @@
  */
 
 // ── Chord shape data ──────────────────────────────────────────────────────────
-// frets: [E, A, D, G, B, e] — low string to high string
-// -1 = muted, 0 = open, 1+ = fret number
+// frets:   [E, A, D, G, B, e] — low string to high string
+// fingers: [E, A, D, G, B, e] — finger numbers (1=index, 2=middle, 3=ring, 4=pinky)
+// -1 = muted, 0 = open string
 // barre: fret number where barre bar is drawn (optional)
 // baseFret: starting fret for display (default 1)
 const CHORD_SHAPES = {
   // Major open chords
-  "C":     { frets: [-1, 3, 2, 0, 1, 0] },
-  "D":     { frets: [-1, -1, 0, 2, 3, 2] },
-  "E":     { frets: [0, 2, 2, 1, 0, 0] },
-  "F":     { frets: [1, 3, 3, 2, 1, 1], barre: 1 },
-  "G":     { frets: [3, 2, 0, 0, 0, 3] },
-  "A":     { frets: [-1, 0, 2, 2, 2, 0] },
-  "B":     { frets: [-1, 2, 4, 4, 4, 2], barre: 2, baseFret: 2 },
-  "Bb":    { frets: [-1, 1, 3, 3, 3, 1], barre: 1, baseFret: 1 },
+  "C":     { frets: [-1, 3, 2, 0, 1, 0], fingers: [-1, 3, 2, 0, 1, 0] },
+  "D":     { frets: [-1, -1, 0, 2, 3, 2], fingers: [-1, -1, 0, 1, 3, 2] },
+  "E":     { frets: [0, 2, 2, 1, 0, 0],  fingers: [0, 2, 3, 1, 0, 0] },
+  "F":     { frets: [1, 3, 3, 2, 1, 1],  fingers: [1, 3, 4, 2, 1, 1], barre: 1 },
+  "G":     { frets: [3, 2, 0, 0, 0, 3],  fingers: [3, 2, 0, 0, 0, 4] },
+  "A":     { frets: [-1, 0, 2, 2, 2, 0], fingers: [-1, 0, 1, 2, 3, 0] },
+  "B":     { frets: [-1, 2, 4, 4, 4, 2], fingers: [-1, 1, 3, 3, 3, 1], barre: 2, baseFret: 2 },
+  "Bb":    { frets: [-1, 1, 3, 3, 3, 1], fingers: [-1, 1, 3, 3, 3, 1], barre: 1, baseFret: 1 },
   // Minor
-  "Am":    { frets: [-1, 0, 2, 2, 1, 0] },
-  "Bm":    { frets: [-1, 2, 4, 4, 3, 2], barre: 2, baseFret: 2 },
-  "Cm":    { frets: [-1, 3, 5, 5, 4, 3], barre: 3, baseFret: 3 },
-  "C#m":   { frets: [-1, 4, 6, 6, 5, 4], barre: 4, baseFret: 4 },
-  "Dm":    { frets: [-1, -1, 0, 2, 3, 1] },
-  "Em":    { frets: [0, 2, 2, 0, 0, 0] },
-  "Fm":    { frets: [1, 3, 3, 1, 1, 1], barre: 1 },
-  "F#m":   { frets: [2, 4, 4, 2, 2, 2], barre: 2, baseFret: 2 },
-  "Gm":    { frets: [3, 5, 5, 3, 3, 3], barre: 3, baseFret: 3 },
+  "Am":    { frets: [-1, 0, 2, 2, 1, 0], fingers: [-1, 0, 2, 3, 1, 0] },
+  "Bm":    { frets: [-1, 2, 4, 4, 3, 2], fingers: [-1, 1, 3, 4, 2, 1], barre: 2, baseFret: 2 },
+  "Cm":    { frets: [-1, 3, 5, 5, 4, 3], fingers: [-1, 1, 3, 4, 2, 1], barre: 3, baseFret: 3 },
+  "C#m":   { frets: [-1, 4, 6, 6, 5, 4], fingers: [-1, 1, 3, 4, 2, 1], barre: 4, baseFret: 4 },
+  "Dm":    { frets: [-1, -1, 0, 2, 3, 1], fingers: [-1, -1, 0, 2, 3, 1] },
+  "Em":    { frets: [0, 2, 2, 0, 0, 0],  fingers: [0, 2, 3, 0, 0, 0] },
+  "Fm":    { frets: [1, 3, 3, 1, 1, 1],  fingers: [1, 3, 4, 1, 1, 1], barre: 1 },
+  "F#m":   { frets: [2, 4, 4, 2, 2, 2],  fingers: [1, 3, 4, 1, 1, 1], barre: 2, baseFret: 2 },
+  "Gm":    { frets: [3, 5, 5, 3, 3, 3],  fingers: [1, 3, 4, 1, 1, 1], barre: 3, baseFret: 3 },
   // 7th chords
-  "A7":    { frets: [-1, 0, 2, 0, 2, 0] },
-  "B7":    { frets: [-1, 2, 1, 2, 0, 2] },
-  "C7":    { frets: [-1, 3, 2, 3, 1, 0] },
-  "D7":    { frets: [-1, -1, 0, 2, 1, 2] },
-  "E7":    { frets: [0, 2, 0, 1, 0, 0] },
-  "G7":    { frets: [3, 2, 0, 0, 0, 1] },
+  "A7":    { frets: [-1, 0, 2, 0, 2, 0], fingers: [-1, 0, 2, 0, 3, 0] },
+  "B7":    { frets: [-1, 2, 1, 2, 0, 2], fingers: [-1, 2, 1, 3, 0, 4] },
+  "C7":    { frets: [-1, 3, 2, 3, 1, 0], fingers: [-1, 3, 2, 4, 1, 0] },
+  "D7":    { frets: [-1, -1, 0, 2, 1, 2], fingers: [-1, -1, 0, 2, 1, 3] },
+  "E7":    { frets: [0, 2, 0, 1, 0, 0],  fingers: [0, 2, 0, 1, 0, 0] },
+  "G7":    { frets: [3, 2, 0, 0, 0, 1],  fingers: [3, 2, 0, 0, 0, 1] },
   // Major 7
-  "Cmaj7": { frets: [-1, 3, 2, 0, 0, 0] },
-  "Fmaj7": { frets: [-1, -1, 3, 2, 1, 0] },
-  "Gmaj7": { frets: [3, 2, 0, 0, 0, 2] },
-  "Amaj7": { frets: [-1, 0, 2, 1, 2, 0] },
+  "Cmaj7": { frets: [-1, 3, 2, 0, 0, 0], fingers: [-1, 3, 2, 0, 0, 0] },
+  "Fmaj7": { frets: [-1, -1, 3, 2, 1, 0], fingers: [-1, -1, 3, 2, 1, 0] },
+  "Gmaj7": { frets: [3, 2, 0, 0, 0, 2],  fingers: [3, 2, 0, 0, 0, 1] },
+  "Amaj7": { frets: [-1, 0, 2, 1, 2, 0], fingers: [-1, 0, 2, 1, 3, 0] },
   // Minor 7
-  "Am7":   { frets: [-1, 0, 2, 0, 1, 0] },
-  "Dm7":   { frets: [-1, -1, 0, 2, 1, 1] },
-  "Em7":   { frets: [0, 2, 2, 0, 3, 0] },
+  "Am7":   { frets: [-1, 0, 2, 0, 1, 0], fingers: [-1, 0, 2, 0, 1, 0] },
+  "Dm7":   { frets: [-1, -1, 0, 2, 1, 1], fingers: [-1, -1, 0, 2, 1, 1] },
+  "Em7":   { frets: [0, 2, 2, 0, 3, 0],  fingers: [0, 2, 3, 0, 4, 0] },
   // Sus / add
-  "Dsus2": { frets: [-1, -1, 0, 2, 3, 0] },
-  "Asus2": { frets: [-1, 0, 2, 2, 0, 0] },
-  "Cadd9": { frets: [-1, 3, 2, 0, 3, 0] },
-  "Esus4": { frets: [0, 2, 2, 2, 0, 0] },
+  "Dsus2": { frets: [-1, -1, 0, 2, 3, 0], fingers: [-1, -1, 0, 1, 3, 0] },
+  "Asus2": { frets: [-1, 0, 2, 2, 0, 0],  fingers: [-1, 0, 1, 2, 0, 0] },
+  "Cadd9": { frets: [-1, 3, 2, 0, 3, 0],  fingers: [-1, 3, 2, 0, 4, 0] },
+  "Esus4": { frets: [0, 2, 2, 2, 0, 0],   fingers: [0, 2, 3, 4, 0, 0] },
 };
 
 // ── SVG chord diagram renderer ────────────────────────────────────────────────
@@ -76,7 +77,7 @@ function buildChordSvg(symbol) {
   const data = CHORD_SHAPES[symbol];
   if (!data) return null;
 
-  const { frets, barre, baseFret = 1 } = data;
+  const { frets, fingers, barre, baseFret = 1 } = data;
   const els = [];
 
   for (let s = 0; s < NUM_STRINGS; s++) {
@@ -108,6 +109,7 @@ function buildChordSvg(symbol) {
       const x2 = PAD_X + barreStrings[barreStrings.length - 1] * STRING_GAP;
       const cy = PAD_TOP + (barre - baseFret + 0.5) * FRET_GAP;
       els.push(`<rect x="${x1 - DOT_R}" y="${cy - DOT_R}" width="${x2 - x1 + DOT_R * 2}" height="${DOT_R * 2}" rx="${DOT_R}" fill="var(--accent, #3EDB8C)"/>`);
+      els.push(`<text x="${(x1 + x2) / 2}" y="${cy + 3.5}" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="sans-serif" pointer-events="none">1</text>`);
     }
   }
 
@@ -117,6 +119,10 @@ function buildChordSvg(symbol) {
       const x  = PAD_X + s * STRING_GAP;
       const cy = PAD_TOP + (fret - baseFret + 0.5) * FRET_GAP;
       els.push(`<circle cx="${x}" cy="${cy}" r="${DOT_R}" fill="var(--accent, #3EDB8C)"/>`);
+      const fn = fingers ? fingers[s] : 0;
+      if (fn > 0) {
+        els.push(`<text x="${x}" y="${cy + 3.5}" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="sans-serif" pointer-events="none">${fn}</text>`);
+      }
     }
   }
 

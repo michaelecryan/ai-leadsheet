@@ -93,6 +93,55 @@
     .feature-strip .f-star { color: var(--accent); }
     .feature-strip .f-sep { margin: 0 10px; color: var(--text-muted); opacity: 0.5; }
 
+    /* ── Chord marquee ── */
+    .chord-marquee {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+      overflow: hidden;
+      margin-top: 24px;
+      -webkit-mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
+      mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
+    }
+    .chord-marquee-track {
+      display: flex;
+      gap: 12px;
+      width: max-content;
+      animation: marquee-scroll 36s linear infinite;
+      padding: 4px 0 8px;
+    }
+    .chord-marquee-track:hover { animation-play-state: paused; }
+    @keyframes marquee-scroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .marquee-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px 10px 4px;
+      text-align: center;
+      flex-shrink: 0;
+      width: 94px;
+    }
+    .marquee-card-name {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+    .marquee-card-svg {
+      height: 72px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+    }
+    .marquee-card-svg svg {
+      transform: scale(0.62);
+      transform-origin: top center;
+      flex-shrink: 0;
+    }
+
     /* ── Drop zone ── */
     #drop-zone {
       width: 100%;
@@ -1073,6 +1122,22 @@
   })();
   </script>
 
+  <!-- Chord marquee — auto-scrolling strip of chord diagrams -->
+  <div class="chord-marquee" id="chord-marquee">
+    <div class="chord-marquee-track" id="chord-marquee-track"></div>
+  </div>
+  <script>
+  (function() {
+    const marqueeChords = ["Am","G","C","F","Em","D","A","E","Dm","Bm","G7","Cadd9"];
+    const doubled = [...marqueeChords, ...marqueeChords];
+    const track = document.getElementById("chord-marquee-track");
+    track.innerHTML = doubled.map(sym => {
+      const svg = buildChordSvg(sym);
+      return '<div class="marquee-card"><div class="marquee-card-name">' + sym + '</div><div class="marquee-card-svg">' + (svg || '') + '</div></div>';
+    }).join("");
+  })();
+  </script>
+
   <!-- Pitch + dual CTAs -->
   <div id="output-preview">
     <p class="pitch-copy">SoloAct takes your favourite song &mdash; whether it&rsquo;s a track you made with AI or one from your favourite artist &mdash; breaks it down into its simplest structure, and gets you from zero to playing in seconds.</p>
@@ -1470,6 +1535,7 @@
     const dropZone      = document.getElementById("drop-zone");
     const featureStrip  = document.getElementById("feature-strip");
     const heroPreview   = document.getElementById("hero-preview");
+    const chordMarquee  = document.getElementById("chord-marquee");
     const outputPreview = document.getElementById("output-preview");
     const fileInput   = document.getElementById("file-input");
     const loading     = document.getElementById("loading");
@@ -1642,6 +1708,10 @@
     // ── Render result ────────────────────────────────────────────────────────
     function showResult(data, file) {
       hideAll();
+      featureStrip.style.display  = "none";
+      heroPreview.style.display   = "none";
+      chordMarquee.style.display  = "none";
+      outputPreview.style.display = "none";
 
       // Track anonymous usage (gate fires on next upload attempt, not this one)
       if (!currentUser) {
@@ -1979,6 +2049,7 @@
       dropZone.style.display      = "none";
       featureStrip.style.display  = "none";
       heroPreview.style.display   = "none";
+      chordMarquee.style.display  = "none";
       outputPreview.style.display = "none";
       const uf = document.getElementById("url-form");
       if (uf) uf.style.display = "none";
@@ -2052,6 +2123,7 @@
       dropZone.style.display      = "block";
       featureStrip.style.display  = "";
       heroPreview.style.display   = "";
+      chordMarquee.style.display  = "";
       outputPreview.style.display = "";
       const uf2 = document.getElementById("url-form");
       if (uf2) uf2.style.display = "none";
