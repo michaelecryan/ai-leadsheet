@@ -1,4 +1,5 @@
 # Nixpacks build configuration for Railway.
-# Adds ffmpeg so yt-dlp can convert downloaded audio to mp3.
+# Adds ffmpeg alongside Python so yt-dlp can convert downloaded audio to mp3.
+# python311 must be listed explicitly — defining [phases.setup] overrides auto-detection.
 [phases.setup]
-nixPkgs = ["ffmpeg"]
+nixPkgs = ["python311", "ffmpeg"]
